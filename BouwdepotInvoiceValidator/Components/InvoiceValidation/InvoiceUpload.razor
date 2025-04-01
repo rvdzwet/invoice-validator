@@ -1,0 +1,187 @@
+@page "/invoice-upload"
+@using System.IO
+@using Microsoft.AspNetCore.Components.Forms
+@using BouwdepotInvoiceValidator.Models
+@using BouwdepotInvoiceValidator.Services
+@inject IInvoiceValidationService ValidationService
+@inject ILogger<InvoiceUpload> Logger
+
+<PageTitle>Bouwdepot Invoice Validator</PageTitle>
+
+<div class="container mt-4">
+    <h1>Bouwdepot Invoice Validator</h1>
+    <p class="lead">Upload an invoice PDF to validate it for home improvement expenses</p>
+
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Upload Invoice</h5>
+                </div>
+                <div class="card-body">
+                    <InputFile OnChange="OnFileSelected" class="form-control mb-3" accept=".pdf" />
+                    
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-primary" @onclick="@(async () => await ValidateFile())" disabled="@(selectedFile == null || isUploading)">
+                            <i class="bi bi-check-circle me-1"></i> Validate Invoice
+                        </button>
+                    </div>
+                    
+                    @if (isUploading)
+                    {
+                        <div class="d-flex align-items-center my-3">
+                            <div class="spinner-border text-primary me-2" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <span>Validating invoice, please wait...</span>
+                        </div>
+                    }
+                    
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger" role="alert">
+                            @errorMessage
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        
+        @if (validationResult != null)
+        {
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header bg-@(GetHeaderColor())">
+                        <h5 class="mb-0 text-white">Validation Result</h5>
+                    </div>
+                    <div class="card-body">
+                        <h4 class="mb-3">
+                            @if (validationResult.IsValid)
+                            {
+                                <span class="badge bg-success">✓ Valid</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-danger">✗ Invalid</span>
+                            }
+                            
+                            @if (validationResult.PossibleTampering)
+                            {
+                                <span class="badge bg-warning text-dark ms-2">⚠ Possible Tampering</span>
+                            }
+                            
+                            @if (validationResult.IsHomeImprovement)
+                            {
+                                <span class="badge bg-info ms-2">Home Improvement</span>
+                            }
+                            else if (validationResult.ExtractedInvoice != null)
+                            {
+                                <span class="badge bg-secondary ms-2">Not Home Improvement</span>
+                            }
+                        </h4>
+                        
+                        @if (validationResult.Issues.Count > 0)
+                        {
+                            <h5>Issues:</h5>
+                            <ul class="list-group mb-3">
+                                @foreach (var issue in validationResult.Issues)
+                                {
+                                    <li class="list-group-item list-group-item-@GetIssueSeverityClass(issue.Severity)">
+                                        @issue.Message
+                                    </li>
+                                }
+                            </ul>
+                        }
+                        
+                        @if (validationResult.ExtractedInvoice != null)
+                        {
+                            <InvoiceDetails Invoice="validationResult.ExtractedInvoice" />
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private ValidationResult? validationResult;
+    private bool isUploading = false;
+    private string? errorMessage;
+    private IBrowserFile? selectedFile;
+    
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        errorMessage = null;
+        validationResult = null;
+        
+        var file = e.File;
+        
+        if (file.ContentType != "application/pdf")
+        {
+            errorMessage = "Only PDF files are accepted";
+            selectedFile = null;
+            return;
+        }
+        
+        selectedFile = file;
+    }
+    
+    private async Task ValidateFile()
+    {
+        if (selectedFile == null)
+            return;
+            
+        try
+        {
+            errorMessage = null;
+            isUploading = true;
+            validationResult = null;
+            
+            // Create a memory stream to copy the uploaded file
+            using var stream = new MemoryStream();
+            await selectedFile.OpenReadStream(10 * 1024 * 1024).CopyToAsync(stream); // 10MB max file size
+            
+            // Reset position to start
+            stream.Position = 0;
+            
+            // Process the PDF file
+            Logger.LogInformation("Validating uploaded invoice: {FileName}", selectedFile.Name);
+            validationResult = await ValidationService.ValidateInvoiceAsync(stream, selectedFile.Name);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing file upload");
+            errorMessage = $"Error processing file: {ex.Message}";
+        }
+        finally
+        {
+            isUploading = false;
+        }
+    }
+    
+    private string GetHeaderColor()
+    {
+        if (validationResult == null)
+            return "primary";
+            
+        if (validationResult.IsValid)
+            return "success";
+            
+        if (validationResult.PossibleTampering)
+            return "warning";
+            
+        return "danger";
+    }
+    
+    private string GetIssueSeverityClass(ValidationSeverity severity)
+    {
+        return severity switch
+        {
+            ValidationSeverity.Error => "danger",
+            ValidationSeverity.Warning => "warning",
+            ValidationSeverity.Info => "info",
+            _ => "secondary"
+        };
+    }
+}
