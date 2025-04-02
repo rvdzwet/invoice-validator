@@ -13,16 +13,25 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { apiService } from '../services/api';
-import { ValidationResult } from '../types/models';
+import { ValidationResult, ConsolidatedAuditReport } from '../types/models';
 
 interface InvoiceUploadProps {
-  onValidationComplete: (result: ValidationResult) => void;
+  onValidationComplete: (response: {
+    validationResult: ValidationResult;
+    auditReport: ConsolidatedAuditReport;
+  }) => void;
+  onValidationStart?: () => void;
+  onValidationError?: (errorMessage: string) => void;
 }
 
 /**
  * Component for uploading and validating invoice files
  */
-const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ onValidationComplete }) => {
+const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ 
+  onValidationComplete,
+  onValidationStart,
+  onValidationError 
+}) => {
   const theme = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -43,7 +52,9 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ onValidationComplete }) =
     
     // Validate file type
     if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-      setError('Only PDF files are accepted');
+      const errorMsg = 'Only PDF files are accepted';
+      setError(errorMsg);
+      if (onValidationError) onValidationError(errorMsg);
       setSelectedFile(null);
       return;
     }
@@ -58,7 +69,9 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ onValidationComplete }) =
    */
   const handleValidate = async () => {
     if (!selectedFile) {
-      setError('Please select a PDF file first');
+      const errorMsg = 'Please select a PDF file first';
+      setError(errorMsg);
+      if (onValidationError) onValidationError(errorMsg);
       return;
     }
 
@@ -66,15 +79,19 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ onValidationComplete }) =
       setIsUploading(true);
       setError(null);
       
-      const result = await apiService.validateInvoice(selectedFile);
-      onValidationComplete(result);
+      // Notify parent component that validation has started
+      if (onValidationStart) onValidationStart();
+      
+      const response = await apiService.validateInvoice(selectedFile);
+      onValidationComplete(response);
     } catch (err) {
       console.error('Error validating invoice:', err);
-      setError(
-        err instanceof Error 
-          ? `Error: ${err.message}` 
-          : 'An error occurred while validating the invoice'
-      );
+      const errorMsg = err instanceof Error 
+        ? `Error: ${err.message}` 
+        : 'An error occurred while validating the invoice';
+      
+      setError(errorMsg);
+      if (onValidationError) onValidationError(errorMsg);
     } finally {
       setIsUploading(false);
     }
@@ -90,8 +107,17 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ onValidationComplete }) =
   };
 
   return (
-    <Card elevation={3}>
-      <CardHeader title="Upload Invoice" />
+    <Card elevation={3} sx={{ bgcolor: '#ffffff' }}>
+      <CardHeader 
+        title="Upload Invoice" 
+        sx={{ 
+          bgcolor: theme.palette.primary.main, 
+          color: '#ffffff',
+          '& .MuiCardHeader-title': {
+            fontWeight: 600
+          }
+        }} 
+      />
       <CardContent>
         <Box sx={{ mb: 3 }}>
           <input
@@ -131,16 +157,17 @@ const InvoiceUpload: React.FC<InvoiceUploadProps> = ({ onValidationComplete }) =
           color="primary"
           onClick={handleValidate}
           disabled={!selectedFile || isUploading}
-          startIcon={<CheckCircleIcon />}
+          startIcon={isUploading ? <CircularProgress size={20} color="inherit" /> : <CheckCircleIcon />}
           fullWidth
         >
-          Validate Invoice
+          {isUploading ? 'Validating...' : 'Validate Invoice'}
         </Button>
         
         {isUploading && (
           <Box sx={{ display: 'flex', alignItems: 'center', mt: 2 }}>
-            <CircularProgress size={24} sx={{ mr: 1 }} />
-            <Typography>Validating invoice, please wait...</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Validating your invoice. This may take a moment as we perform a comprehensive analysis.
+            </Typography>
           </Box>
         )}
         

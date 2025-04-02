@@ -1,358 +1,190 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading.Tasks;
-using BouwdepotInvoiceValidator.Models;
-using Google.Cloud.AIPlatform.V1;
-using Google.Protobuf.WellKnownTypes;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Services.Gemini;
+using BouwdepotInvoiceValidator.Models.Analysis;
 
 namespace BouwdepotInvoiceValidator.Services
 {
     /// <summary>
-    /// Service for interacting with Gemini Flash 2.0 API to analyze invoice data
+    /// Implementation of IGeminiService that delegates to specialized Gemini services
+    /// This is a transitional class to support both the new Gemini/* services and legacy integrations
     /// </summary>
-    public class GeminiService : IGeminiService
+    public class GeminiService : GeminiServiceBase, IGeminiService
     {
         private readonly ILogger<GeminiService> _logger;
-        private readonly IConfiguration _configuration;
-        private readonly string _apiKey;
-        private readonly string _projectId;
-        private readonly string _location;
-        private readonly string _modelId;
+        private readonly GeminiConversationService _conversationService;
+        private readonly GeminiDocumentAnalysisService _documentService;
+        private readonly GeminiHomeImprovementService _homeImprovementService;
+        private readonly GeminiFraudDetectionService _fraudDetectionService;
+        private readonly GeminiLineItemAnalysisService _lineItemService;
 
-        public GeminiService(ILogger<GeminiService> logger, IConfiguration configuration)
+        public GeminiService(
+            ILogger<GeminiService> logger,
+            IConfiguration configuration,
+            GeminiConversationService conversationService,
+            GeminiDocumentAnalysisService documentService,
+            GeminiHomeImprovementService homeImprovementService,
+            GeminiFraudDetectionService fraudDetectionService,
+            GeminiLineItemAnalysisService lineItemService) 
+            : base(logger, configuration)
         {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            
-            // Load configuration
-            _apiKey = _configuration["Gemini:ApiKey"] ?? throw new ArgumentException("Gemini API key is not configured.");
-            _projectId = _configuration["Gemini:ProjectId"] ?? "your-project-id";
-            _location = _configuration["Gemini:Location"] ?? "us-central1";
-            _modelId = _configuration["Gemini:ModelId"] ?? "gemini-flash-2.0";
+            _logger = logger;
+            _conversationService = conversationService ?? throw new ArgumentNullException(nameof(conversationService));
+            _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
+            _homeImprovementService = homeImprovementService ?? throw new ArgumentNullException(nameof(homeImprovementService));
+            _fraudDetectionService = fraudDetectionService ?? throw new ArgumentNullException(nameof(fraudDetectionService));
+            _lineItemService = lineItemService ?? throw new ArgumentNullException(nameof(lineItemService));
         }
 
-        /// <inheritdoc />
+        #region Conversation Methods
+
+        /// <summary>
+        /// Starts a new conversation context, making it the current active conversation
+        /// </summary>
+        /// <param name="metadata">Optional metadata for the conversation</param>
+        /// <returns>The ID of the new conversation</returns>
+        public new string StartNewConversation(Dictionary<string, string> metadata = null)
+        {
+            _logger.LogInformation("Starting new conversation");
+            return _conversationService.StartNewConversation(metadata);
+        }
+        
+        /// <summary>
+        /// Switches to an existing conversation context
+        /// </summary>
+        /// <param name="conversationId">ID of the conversation to switch to</param>
+        /// <returns>True if the conversation was found, false otherwise</returns>
+        public new bool SwitchConversation(string conversationId)
+        {
+            _logger.LogInformation("Switching to conversation: {ConversationId}", conversationId);
+            return _conversationService.SwitchConversation(conversationId);
+        }
+        
+        /// <summary>
+        /// Clears the message history for the current conversation
+        /// </summary>
+        public new void ClearCurrentConversation()
+        {
+            _logger.LogInformation("Clearing current conversation");
+            _conversationService.ClearCurrentConversation();
+        }
+        
+        /// <summary>
+        /// Gets the current conversation context
+        /// </summary>
+        /// <returns>The current conversation context</returns>
+        public new ConversationContext GetCurrentConversation()
+        {
+            return _conversationService.GetCurrentConversation();
+        }
+        
+        /// <summary>
+        /// Send a prompt to Gemini in the context of an ongoing conversation
+        /// </summary>
+        /// <param name="prompt">The user's prompt or question</param>
+        /// <param name="useHistory">Whether to include conversation history (defaults to true)</param>
+        /// <returns>Gemini's response as a string</returns>
+        public async Task<string> GetConversationPromptAsync(string prompt, bool useHistory = true)
+        {
+            _logger.LogInformation("Processing conversational prompt");
+            return await _conversationService.GetConversationPromptAsync(prompt, useHistory);
+        }
+
+        #endregion
+
+        #region Document Analysis Methods
+
+        /// <summary>
+        /// Uses Gemini AI to extract invoice data from the PDF images
+        /// </summary>
+        /// <param name="invoice">The invoice with page images</param>
+        /// <returns>The invoice with extracted data from the images</returns>
+        public async Task<Invoice> ExtractInvoiceDataFromImagesAsync(Invoice invoice)
+        {
+            _logger.LogInformation("Extracting invoice data from images");
+            return await _documentService.ExtractInvoiceDataFromImagesAsync(invoice);
+        }
+        
+        /// <summary>
+        /// Uses Gemini AI to verify if the document is actually an invoice
+        /// </summary>
+        /// <param name="invoice">The extracted document data</param>
+        /// <returns>A validation result with Gemini's document type assessment</returns>
+        public async Task<ValidationResult> VerifyDocumentTypeAsync(Invoice invoice)
+        {
+            _logger.LogInformation("Verifying document type");
+            return await _documentService.VerifyDocumentTypeAsync(invoice);
+        }
+
+        #endregion
+
+        #region Home Improvement Methods
+
+        /// <summary>
+        /// Uses Gemini AI to validate if the invoice is related to home improvement
+        /// </summary>
+        /// <param name="invoice">The extracted invoice data</param>
+        /// <returns>A validation result with Gemini's assessment</returns>
         public async Task<ValidationResult> ValidateHomeImprovementAsync(Invoice invoice)
         {
-            _logger.LogInformation("Validating if invoice is related to home improvement");
-            
-            var result = new ValidationResult { ExtractedInvoice = invoice };
-            
-            try
-            {
-                // Prepare the invoice data for Gemini
-                var prompt = BuildHomeImprovementPrompt(invoice);
-                
-                // Call Gemini API
-                var response = await CallGeminiApiAsync(prompt);
-                result.RawGeminiResponse = response;
-                
-                // Parse the response
-                var isHomeImprovement = ParseHomeImprovementResponse(response, result);
-                result.IsHomeImprovement = isHomeImprovement;
-                
-                if (!isHomeImprovement)
-                {
-                    result.AddIssue(ValidationSeverity.Error, 
-                        "The invoice does not appear to be related to home improvement expenses.");
-                    result.IsValid = false;
-                }
-                else
-                {
-                    result.AddIssue(ValidationSeverity.Info, 
-                        "The invoice appears to be valid home improvement expenses.");
-                    result.IsValid = true;
-                }
-                
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error validating home improvement with Gemini");
-                result.AddIssue(ValidationSeverity.Error, 
-                    $"Error validating with Gemini: {ex.Message}");
-                result.IsValid = false;
-                return result;
-            }
+            _logger.LogInformation("Validating if invoice is home improvement related");
+            return await _homeImprovementService.ValidateHomeImprovementAsync(invoice);
+        }
+        
+        /// <summary>
+        /// Uses Gemini AI with multi-modal capabilities to validate invoice using both text and images
+        /// </summary>
+        /// <param name="invoice">The extracted invoice data including page images</param>
+        /// <returns>A comprehensive validation result with visual and textual analysis</returns>
+        public async Task<ValidationResult> ValidateWithMultiModalAnalysisAsync(Invoice invoice)
+        {
+            _logger.LogInformation("Performing multi-modal validation of invoice");
+            return await _homeImprovementService.ValidateWithMultiModalAnalysisAsync(invoice);
         }
 
-        /// <inheritdoc />
+        #endregion
+
+        #region Fraud Detection Methods
+
+        /// <summary>
+        /// Uses Gemini AI to check for signs of tampering or fraud in the invoice
+        /// </summary>
+        /// <param name="invoice">The extracted invoice data</param>
+        /// <param name="detectedTampering">Initial tampering detection result from PDF analysis</param>
+        /// <returns>True if Gemini detects possible fraud, otherwise false</returns>
         public async Task<bool> DetectFraudAsync(Invoice invoice, bool detectedTampering)
         {
-            _logger.LogInformation("Checking for fraud indicators in invoice");
-            
-            try
-            {
-                // If we already detected PDF tampering, no need to check with Gemini
-                if (detectedTampering)
-                {
-                    _logger.LogWarning("PDF tampering already detected, skipping Gemini fraud check");
-                    return true;
-                }
-                
-                // Prepare the fraud detection prompt
-                var prompt = BuildFraudDetectionPrompt(invoice);
-                
-                // Call Gemini API
-                var response = await CallGeminiApiAsync(prompt);
-                
-                // Parse the response
-                bool possibleFraud = ParseFraudDetectionResponse(response);
-                
-                if (possibleFraud)
-                {
-                    _logger.LogWarning("Gemini detected possible fraud in the invoice");
-                }
-                
-                return possibleFraud;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking for fraud with Gemini");
-                // If we encounter an error, we should assume no fraud to avoid false positives
-                return false;
-            }
+            _logger.LogInformation("Detecting fraud in invoice");
+            return await _fraudDetectionService.DetectFraudAsync(invoice, detectedTampering);
         }
-        
-        private string BuildHomeImprovementPrompt(Invoice invoice)
+
+        #endregion
+
+        #region Line Item Analysis Methods
+
+        /// <summary>
+        /// Uses Gemini AI to analyze the invoice line items to determine what was purchased
+        /// </summary>
+        /// <param name="invoice">The extracted invoice data with line items</param>
+        /// <returns>A detailed analysis of the invoice line items</returns>
+        public async Task<Models.Analysis.LineItemAnalysisResult> AnalyzeLineItemsAsync(Invoice invoice)
         {
-            var promptBuilder = new StringBuilder();
-            
-            promptBuilder.AppendLine("You are an expert in assessing if expenses are related to home improvement projects.");
-            promptBuilder.AppendLine("Please analyze the following invoice details and determine if they are for home improvement expenses.");
-            promptBuilder.AppendLine("Respond with a JSON object that includes a boolean 'isHomeImprovement' field, a 'confidence' score from 0-1, and a 'reasoning' field explaining your assessment.");
-            promptBuilder.AppendLine("\nInvoice Details:");
-            
-            // Add vendor information
-            promptBuilder.AppendLine($"Vendor: {invoice.VendorName}");
-            
-            // Add invoice date if available
-            if (invoice.InvoiceDate.HasValue)
-            {
-                promptBuilder.AppendLine($"Date: {invoice.InvoiceDate.Value.ToString("yyyy-MM-dd")}");
-            }
-            
-            // Add line items
-            promptBuilder.AppendLine("\nItems:");
-            foreach (var item in invoice.LineItems)
-            {
-                promptBuilder.AppendLine($"- {item.Description}: {item.Quantity} x €{item.UnitPrice:N2} = €{item.TotalPrice:N2}");
-            }
-            
-            // Add total amount
-            promptBuilder.AppendLine($"\nTotal Amount: €{invoice.TotalAmount:N2}");
-            
-            promptBuilder.AppendLine("\nThe invoice should be considered home improvement related if it includes materials, labor, or services typically used to improve, repair, renovate, or maintain a residential property. Examples include building materials, plumbing, electrical work, flooring, paint, tools for construction, contractor services, etc.");
-            
-            return promptBuilder.ToString();
+            _logger.LogInformation("Analyzing invoice line items");
+            // The _lineItemService is a GeminiLineItemAnalysisService from the Gemini namespace
+            // which returns Models.Analysis.LineItemAnalysisResult
+            return await _lineItemService.AnalyzeLineItemsAsync(invoice);
         }
-        
-        private string BuildFraudDetectionPrompt(Invoice invoice)
+        /// <returns>A validation result with detailed audit information</returns>
+        public async Task<ValidationResult> GetAuditReadyAssessmentAsync(Invoice invoice)
         {
-            var promptBuilder = new StringBuilder();
-            
-            promptBuilder.AppendLine("You are an expert in detecting potentially fraudulent invoices.");
-            promptBuilder.AppendLine("Please analyze the following invoice details and determine if there are any indicators of fraud or suspicious activity.");
-            promptBuilder.AppendLine("Respond with a JSON object that includes a boolean 'possibleFraud' field, a 'confidence' score from 0-1, and a 'reasoning' field explaining any suspicious elements.");
-            promptBuilder.AppendLine("\nInvoice Details:");
-            
-            // Add invoice metadata
-            promptBuilder.AppendLine($"Invoice Number: {invoice.InvoiceNumber}");
-            promptBuilder.AppendLine($"Vendor: {invoice.VendorName}");
-            
-            // Add vendor information if available
-            if (!string.IsNullOrEmpty(invoice.VendorKvkNumber))
-            {
-                promptBuilder.AppendLine($"KvK Number: {invoice.VendorKvkNumber}");
-            }
-            
-            if (!string.IsNullOrEmpty(invoice.VendorBtwNumber))
-            {
-                promptBuilder.AppendLine($"BTW/VAT Number: {invoice.VendorBtwNumber}");
-            }
-            
-            // Add invoice date if available
-            if (invoice.InvoiceDate.HasValue)
-            {
-                promptBuilder.AppendLine($"Date: {invoice.InvoiceDate.Value.ToString("yyyy-MM-dd")}");
-            }
-            
-            // Add line items
-            promptBuilder.AppendLine("\nItems:");
-            foreach (var item in invoice.LineItems)
-            {
-                promptBuilder.AppendLine($"- {item.Description}: {item.Quantity} x €{item.UnitPrice:N2} = €{item.TotalPrice:N2}");
-            }
-            
-            // Add total amount and VAT
-            promptBuilder.AppendLine($"\nTotal Amount: €{invoice.TotalAmount:N2}");
-            promptBuilder.AppendLine($"VAT Amount: €{invoice.VatAmount:N2}");
-            
-            promptBuilder.AppendLine("\nPlease check for inconsistencies in the invoice, such as mismatched totals, suspicious item descriptions, unusual pricing, missing important information, or other indicators of potential fraud.");
-            
-            return promptBuilder.ToString();
+            _logger.LogInformation("Getting audit-ready assessment");
+            return await _lineItemService.GetAuditReadyAssessmentAsync(invoice);
         }
-        
-        private async Task<string> CallGeminiApiAsync(string prompt)
-        {
-            _logger.LogInformation("Calling Gemini API");
-            
-            try
-            {
-                // Create client
-                var client = new PredictionServiceClientBuilder
-                {
-                    Endpoint = $"{_location}-aiplatform.googleapis.com:443",
-                }.Build();
-                
-                // Format the JSON for the request
-                var requestContent = @"{
-                    ""contents"": [
-                        {
-                            ""role"": ""user"",
-                            ""parts"": [
-                                {
-                                    ""text"": """ + prompt.Replace("\"", "\\\"") + @"""
-                                }
-                            ]
-                        }
-                    ]
-                }";
-                
-                var parametersContent = @"{
-                    ""temperature"": 0.2,
-                    ""maxOutputTokens"": 2048,
-                    ""topP"": 0.8,
-                    ""topK"": 40
-                }";
-                
-                // Create the request
-                var request = new PredictRequest
-                {
-                    Endpoint = $"projects/{_projectId}/locations/{_location}/publishers/google/models/{_modelId}",
-                };
-                
-                // Add JSON content using Value class
-                var instanceValue = Google.Protobuf.WellKnownTypes.Value.Parser.ParseJson(requestContent);
-                request.Instances.Add(instanceValue);
-                
-                var parametersValue = Google.Protobuf.WellKnownTypes.Value.Parser.ParseJson(parametersContent);
-                request.Parameters = parametersValue;
-                
-                // Make the request
-                var response = await client.PredictAsync(request);
-                
-                // Extract the text content from the response
-                var jsonResponse = response.Predictions[0].ToString();
-                var responseObject = JsonDocument.Parse(jsonResponse).RootElement;
-                
-                var contentArray = responseObject.GetProperty("candidates")[0]
-                    .GetProperty("content")
-                    .GetProperty("parts")[0]
-                    .GetProperty("text").GetString();
-                
-                return contentArray ?? string.Empty;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error calling Gemini API");
-                throw;
-            }
-        }
-        
-        private bool ParseHomeImprovementResponse(string responseText, ValidationResult result)
-        {
-            try
-            {
-                // Extract JSON from the response (in case Gemini returns additional text)
-                var jsonMatch = System.Text.RegularExpressions.Regex.Match(responseText, @"\{.*\}");
-                if (jsonMatch.Success)
-                {
-                    var jsonResponse = jsonMatch.Value;
-                    var response = JsonSerializer.Deserialize<GeminiHomeImprovementResponse>(jsonResponse);
-                    
-                    if (response != null)
-                    {
-                        // Add reasoning as an info issue
-                        result.AddIssue(ValidationSeverity.Info, 
-                            $"Gemini assessment: {response.Reasoning} (Confidence: {response.Confidence:P0})");
-                        
-                        return response.IsHomeImprovement;
-                    }
-                }
-                
-                // If we can't parse JSON, check for keywords
-                return responseText.Contains("home improvement", StringComparison.OrdinalIgnoreCase) && 
-                       !responseText.Contains("not related to home improvement", StringComparison.OrdinalIgnoreCase);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing Gemini home improvement response");
-                // Default to true to avoid false negatives
-                return true;
-            }
-        }
-        
-        private bool ParseFraudDetectionResponse(string responseText)
-        {
-            try
-            {
-                // Extract JSON from the response
-                var jsonMatch = System.Text.RegularExpressions.Regex.Match(responseText, @"\{.*\}");
-                if (jsonMatch.Success)
-                {
-                    var jsonResponse = jsonMatch.Value;
-                    var response = JsonSerializer.Deserialize<GeminiFraudResponse>(jsonResponse);
-                    
-                    if (response != null)
-                    {
-                        _logger.LogInformation("Fraud detection result: {Result} with confidence {Confidence}. Reasoning: {Reasoning}", 
-                            response.PossibleFraud, response.Confidence, response.Reasoning);
-                        
-                        return response.PossibleFraud;
-                    }
-                }
-                
-                // If we can't parse JSON, check for keywords
-                return responseText.Contains("suspicious", StringComparison.OrdinalIgnoreCase) || 
-                       responseText.Contains("fraud", StringComparison.OrdinalIgnoreCase) ||
-                       responseText.Contains("inconsistent", StringComparison.OrdinalIgnoreCase);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parsing Gemini fraud response");
-                // Default to false to avoid false positives
-                return false;
-            }
-        }
-        
-        private class GeminiHomeImprovementResponse
-        {
-            [JsonPropertyName("isHomeImprovement")]
-            public bool IsHomeImprovement { get; set; }
-            
-            [JsonPropertyName("confidence")]
-            public double Confidence { get; set; }
-            
-            [JsonPropertyName("reasoning")]
-            public string Reasoning { get; set; } = string.Empty;
-        }
-        
-        private class GeminiFraudResponse
-        {
-            [JsonPropertyName("possibleFraud")]
-            public bool PossibleFraud { get; set; }
-            
-            [JsonPropertyName("confidence")]
-            public double Confidence { get; set; }
-            
-            [JsonPropertyName("reasoning")]
-            public string Reasoning { get; set; } = string.Empty;
-        }
+
+        #endregion
     }
 }

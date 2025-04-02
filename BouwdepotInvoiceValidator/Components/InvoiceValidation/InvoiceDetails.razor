@@ -69,7 +69,104 @@
     }
 </div>
 
+    @if (ValidationResult != null && ValidationResult.PurchaseAnalysis != null)
+    {
+        <div class="mt-4">
+            <h6>Purchase Analysis</h6>
+            
+            @if (!string.IsNullOrEmpty(ValidationResult.PurchaseAnalysis.Summary))
+            {
+                <div class="alert alert-info">
+                    <strong>Summary:</strong> @ValidationResult.PurchaseAnalysis.Summary
+                </div>
+            }
+            
+            <div class="row">
+                <div class="col-md-6">
+                    @if (!string.IsNullOrEmpty(ValidationResult.PurchaseAnalysis.PrimaryPurpose))
+                    {
+                        <div class="mb-2">
+                            <strong>Primary Purpose:</strong> @ValidationResult.PurchaseAnalysis.PrimaryPurpose
+                        </div>
+                    }
+                    
+                    @if (ValidationResult.PurchaseAnalysis.Categories.Count > 0)
+                    {
+                        <div class="mb-2">
+                            <strong>Categories:</strong>
+                            <div class="mt-1">
+                                @foreach (var category in ValidationResult.PurchaseAnalysis.Categories)
+                                {
+                                    <span class="badge bg-primary me-1 mb-1">@category</span>
+                                }
+                            </div>
+                        </div>
+                    }
+                    
+                    @if (ValidationResult.PurchaseAnalysis.HomeImprovementPercentage > 0)
+                    {
+                        <div class="mb-2">
+                            <strong>Home Improvement Items:</strong> 
+                            <div class="progress mt-1" style="height: 20px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: @(ValidationResult.PurchaseAnalysis.HomeImprovementPercentage * 100)%;"
+                                     aria-valuenow="@(ValidationResult.PurchaseAnalysis.HomeImprovementPercentage * 100)" 
+                                     aria-valuemin="0" aria-valuemax="100">
+                                    @(Math.Round(ValidationResult.PurchaseAnalysis.HomeImprovementPercentage * 100, 0))%
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+            
+            @if (ValidationResult.PurchaseAnalysis.LineItemDetails.Count > 0)
+            {
+                <h6 class="mt-3">Line Item Analysis</h6>
+                <div class="table-responsive">
+                    <table class="table table-striped table-sm">
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Interpreted As</th>
+                                <th>Category</th>
+                                <th>Home Improvement</th>
+                                <th>Confidence</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in ValidationResult.PurchaseAnalysis.LineItemDetails)
+                            {
+                                <tr>
+                                    <td>@item.Description</td>
+                                    <td>@item.InterpretedAs</td>
+                                    <td>
+                                        <span class="badge bg-primary">@item.Category</span>
+                                    </td>
+                                    <td>
+                                        @if (item.IsHomeImprovement)
+                                        {
+                                            <span class="badge bg-success">Yes</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-danger">No</span>
+                                        }
+                                    </td>
+                                    <td>@(Math.Round(item.Confidence * 100, 0))%</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+
 @code {
     [Parameter]
     public Invoice Invoice { get; set; } = default!;
+    
+    [Parameter]
+    public ValidationResult? ValidationResult { get; set; }
 }

@@ -58,23 +58,109 @@ function Start-Frontend {
     Write-Host "Frontend started. Available at: http://localhost:3000" -ForegroundColor Green
 }
 
-function Main {
-    Write-Header "Bouwdepot Invoice Validator"
+function Build-ProductionRelease {
+    Write-Header "Building Production Release"
     
-    Write-Host "Starting both backend and frontend applications..." -ForegroundColor Yellow
-    Write-Host "Press Ctrl+C in the terminal windows to stop each application" -ForegroundColor Yellow
+    $frontendPath = Join-Path $projectRoot "BouwdepotInvoiceValidator.Client"
+    $backendPath = Join-Path $projectRoot "BouwdepotInvoiceValidator"
     
-    # Start backend and frontend
-    Start-Backend
-    Start-Frontend
+    # Check if directories exist
+    if (-not (Test-Path $frontendPath)) {
+        Write-Host "Frontend directory not found at: $frontendPath" -ForegroundColor Red
+        exit 1
+    }
+    
+    if (-not (Test-Path $backendPath)) {
+        Write-Host "Backend directory not found at: $backendPath" -ForegroundColor Red
+        exit 1
+    }
+    
+    # Build frontend production bundle
+    Write-Host "Building frontend production bundle..." -ForegroundColor Yellow
+    Set-Location $frontendPath
+    
+    # Install dependencies if needed
+    $nodeModulesPath = Join-Path $frontendPath "node_modules"
+    if (-not (Test-Path $nodeModulesPath)) {
+        Write-Host "Installing frontend dependencies..." -ForegroundColor Yellow
+        npm install
+    }
+    
+    # Run production build
+    npm run build:prod
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Frontend build failed with exit code $LASTEXITCODE" -ForegroundColor Red
+        exit 1
+    }
+    
+    # Check if dist directory was created
+    $distPath = Join-Path $frontendPath "dist"
+    if (-not (Test-Path $distPath)) {
+        Write-Host "Frontend build failed - dist directory not created" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host "Frontend production build completed successfully" -ForegroundColor Green
+    
+    # Build backend
+    Write-Host "Building backend for production..." -ForegroundColor Yellow
+    Set-Location $backendPath
+    
+    # Build in Release configuration
+    dotnet build -c Release
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Backend build failed with exit code $LASTEXITCODE" -ForegroundColor Red
+        exit 1
+    }
+    
+    Write-Host "Backend built successfully in Release configuration" -ForegroundColor Green
+    
+    # Return to project root
+    Set-Location $projectRoot
     
     Write-Host ""
-    Write-Host "Both applications are now running." -ForegroundColor Green
-    Write-Host "- Backend API: https://localhost:7051" -ForegroundColor Yellow
-    Write-Host "- Frontend:    http://localhost:3000" -ForegroundColor Yellow
-    Write-Host ""
-    Write-Host "To stop the applications, close the opened terminal windows." -ForegroundColor Yellow
+    Write-Host "Production release build completed!" -ForegroundColor Green
+    Write-Host "Frontend bundle location: $distPath" -ForegroundColor Yellow
+    Write-Host "Backend release build complete" -ForegroundColor Yellow
 }
 
-# Run the main function
-Main
+function Main {
+    param (
+        [Parameter()]
+        [switch]$BuildProduction
+    )
+    
+    Write-Header "Bouwdepot Invoice Validator"
+    
+    if ($BuildProduction) {
+        # Build production release
+        Build-ProductionRelease
+    } else {
+        # Run development servers
+        Write-Host "Starting both backend and frontend applications..." -ForegroundColor Yellow
+        Write-Host "Press Ctrl+C in the terminal windows to stop each application" -ForegroundColor Yellow
+        
+        # Start backend and frontend
+        Start-Backend
+        Start-Frontend
+        
+        Write-Host ""
+        Write-Host "Both applications are now running." -ForegroundColor Green
+        Write-Host "- Backend API: https://localhost:7051" -ForegroundColor Yellow
+        Write-Host "- Frontend:    http://localhost:3000" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "To stop the applications, close the opened terminal windows." -ForegroundColor Yellow
+    }
+}
+
+# Main execution logic
+# Check if -BuildProduction parameter was passed
+if ($args -contains "-BuildProduction") {
+    # Run in production build mode
+    Main -BuildProduction
+} else {
+    # Run in development mode
+    Main
+}

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -10,7 +11,11 @@ using BouwdepotInvoiceValidator.Models;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using ImageMagick;
 using Microsoft.Extensions.Logging;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace BouwdepotInvoiceValidator.Services
 {
@@ -20,16 +25,20 @@ namespace BouwdepotInvoiceValidator.Services
     public class PdfExtractionService : IPdfExtractionService
     {
         private readonly ILogger<PdfExtractionService> _logger;
+        private readonly IGeminiService _geminiService;
 
-        public PdfExtractionService(ILogger<PdfExtractionService> logger)
+        public PdfExtractionService(
+            ILogger<PdfExtractionService> logger,
+            IGeminiService geminiService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _geminiService = geminiService ?? throw new ArgumentNullException(nameof(geminiService));
         }
 
         /// <inheritdoc />
         public async Task<Invoice> ExtractFromPdfAsync(Stream fileStream, string fileName)
         {
-            _logger.LogInformation("Extracting data from PDF file: {FileName}", fileName);
+            _logger.LogInformation("Extracting data from PDF file using Gemini AI: {FileName}", fileName);
             
             var invoice = new Invoice
             {
@@ -44,15 +53,43 @@ namespace BouwdepotInvoiceValidator.Services
                 // Reset stream position
                 fileStream.Position = 0;
                 
-                // Extract text from PDF
-                var text = await ExtractTextFromPdfAsync(fileStream);
-                invoice.RawText = text;
-
-                // Extract invoice data from text
-                ExtractInvoiceData(invoice, text);
+                // Extract page images for visual analysis
+                invoice.PageImages = await ExtractPageImagesAsync(fileStream);
                 
-                _logger.LogInformation("Successfully extracted invoice data: Number={InvoiceNumber}, Date={InvoiceDate}, Amount={TotalAmount}", 
-                    invoice.InvoiceNumber, invoice.InvoiceDate, invoice.TotalAmount);
+                // Add visual analysis data
+                invoice.VisualAnalysis = await AnalyzeVisualElementsAsync(fileStream);
+                
+                // Extract invoice data from images using Gemini AI
+                if (invoice.PageImages != null && invoice.PageImages.Count > 0)
+                {
+                    _logger.LogInformation("Using Gemini AI to extract invoice data from images");
+                    
+                    // Use Gemini to extract invoice data from the images
+                    invoice = await _geminiService.ExtractInvoiceDataFromImagesAsync(invoice);
+                    
+                    _logger.LogInformation("Successfully extracted invoice data using Gemini AI: " +
+                                           "InvoiceNumber={InvoiceNumber}, InvoiceDate={InvoiceDate}, TotalAmount={TotalAmount}",
+                                           invoice.InvoiceNumber, invoice.InvoiceDate, invoice.TotalAmount);
+                }
+                else
+                {
+                    _logger.LogWarning("No page images available for Gemini AI extraction");
+                }
+                
+                // If Gemini didn't extract the text yet, extract it using iText
+                if (string.IsNullOrEmpty(invoice.RawText))
+                {
+                    invoice.RawText = ExtractTextFromPdf(fileStream);
+                    
+                    // If Gemini AI didn't extract invoice data, try with regex
+                    if (string.IsNullOrEmpty(invoice.InvoiceNumber) && !invoice.InvoiceDate.HasValue && invoice.TotalAmount <= 0)
+                    {
+                        _logger.LogInformation("Using regex to extract invoice data from text");
+                        ExtractInvoiceData(invoice, invoice.RawText);
+                    }
+                }
+                
+                _logger.LogInformation("Successfully extracted data from: {FileName}", fileName);
                 
                 return invoice;
             }
@@ -123,7 +160,7 @@ namespace BouwdepotInvoiceValidator.Services
             }
         }
         
-        private async Task<string> ExtractTextFromPdfAsync(Stream fileStream)
+        private string ExtractTextFromPdf(Stream fileStream)
         {
             var text = new StringBuilder();
             
@@ -153,6 +190,390 @@ namespace BouwdepotInvoiceValidator.Services
                 _logger.LogError(ex, "Error extracting text from PDF");
                 throw;
             }
+        }
+
+        // Simple in-memory cache to avoid repeated processing of the same PDF
+        private static readonly Dictionary<string, List<InvoicePageImage>> _pageImageCache = 
+            new Dictionary<string, List<InvoicePageImage>>(StringComparer.OrdinalIgnoreCase);
+        private static readonly object _cacheLock = new object();
+        
+        /// <inheritdoc />
+        public async Task<List<InvoicePageImage>> ExtractPageImagesAsync(Stream fileStream)
+        {
+            _logger.LogInformation("Extracting optimized page images from PDF for AI visual analysis");
+
+            try
+            {
+                // Generate a cache key based on file length and first 1KB of content
+                string cacheKey = GenerateCacheKey(fileStream);
+                
+                // Check if we've already processed this PDF
+                lock (_cacheLock)
+                {
+                    if (_pageImageCache.TryGetValue(cacheKey, out var cachedImages))
+                    {
+                        _logger.LogInformation("Using cached page images for PDF");
+                        return cachedImages;
+                    }
+                }
+                
+                fileStream.Position = 0;
+                var pageImages = new List<InvoicePageImage>();
+
+                using var reader = new PdfReader(fileStream);
+                using var document = new PdfDocument(reader);
+
+                int numberOfPages = document.GetNumberOfPages();
+                _logger.LogInformation("PDF contains {NumberOfPages} pages", numberOfPages);
+
+                // Optimized: Process only the first page by default (most important data usually on first page)
+                int pagesToProcess = 1;
+                _logger.LogInformation("Processing first {PageCount} page(s) for initial analysis", pagesToProcess);
+
+                // Pre-read the PDF bytes once to avoid multiple stream operations
+                fileStream.Position = 0;
+                byte[] pdfBytes;
+                using (var ms = new MemoryStream())
+                {
+                    await fileStream.CopyToAsync(ms);
+                    pdfBytes = ms.ToArray();
+                }
+
+                // Process pages in parallel for multi-core advantage
+                var tasks = new List<Task<InvoicePageImage>>();
+                for (int i = 1; i <= pagesToProcess; i++)
+                {
+                    int pageNumber = i; // Create local copy for lambda
+                    tasks.Add(Task.Run(() => ExtractSinglePageImageAsync(pdfBytes, pageNumber, document)));
+                }
+
+                // Wait for all conversions to complete
+                var results = await Task.WhenAll(tasks);
+                pageImages.AddRange(results);
+
+                // Cache the results
+                lock (_cacheLock)
+                {
+                    // Limit cache size to prevent memory issues
+                    if (_pageImageCache.Count > 100) // Arbitrary limit
+                    {
+                        // Remove random entry if too many items
+                        var keyToRemove = _pageImageCache.Keys.First();
+                        _pageImageCache.Remove(keyToRemove);
+                    }
+                    
+                    _pageImageCache[cacheKey] = pageImages;
+                }
+
+                _logger.LogInformation("Successfully extracted optimized images for initial analysis");
+                return pageImages;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting optimized page images from PDF");
+                throw;
+            }
+        }
+        
+        /// <summary>
+        /// Generate a cache key for a PDF stream
+        /// </summary>
+        private string GenerateCacheKey(Stream fileStream)
+        {
+            long originalPosition = fileStream.Position;
+            try
+            {
+                fileStream.Position = 0;
+                
+                // Get length
+                long length = fileStream.Length;
+                
+                // Read first 1KB (or less if file is smaller)
+                byte[] buffer = new byte[Math.Min(1024, length)];
+                fileStream.Read(buffer, 0, buffer.Length);
+                
+                // Create hash of this content
+                using (var sha = System.Security.Cryptography.SHA256.Create())
+                {
+                    byte[] hashBytes = sha.ComputeHash(buffer);
+                    string hash = Convert.ToBase64String(hashBytes);
+                    
+                    // Combine file length and hash for a more unique key
+                    return $"{length}_{hash}";
+                }
+            }
+            finally
+            {
+                // Restore original position
+                fileStream.Position = originalPosition;
+            }
+        }
+        
+        /// <summary>
+        /// Extract a single page image asynchronously
+        /// </summary>
+        private InvoicePageImage ExtractSinglePageImageAsync(byte[] pdfBytes, int pageNumber, PdfDocument document)
+        {
+            _logger.LogInformation("Processing page {PageNumber} for optimized image extraction", pageNumber);
+
+            var page = document.GetPage(pageNumber);
+            var pageSize = page.GetPageSize();
+
+            try
+            {
+                using (var magick = new MagickImage())
+                {
+                    // Further optimized: Reduced DPI from 200 to 150 for initial analysis - still good for text recognition but even faster
+                    var readSettings = new MagickReadSettings
+                    {
+                        Density = new Density(150),
+                        Format = MagickFormat.Pdf,
+                        FrameIndex = (uint)(pageNumber - 1),
+                        FrameCount = 1u
+                    };
+                    _logger.LogDebug("Reading PDF page with optimized density of {Density} DPI", readSettings.Density);
+
+                    magick.Read(pdfBytes, readSettings);
+
+                    // Optimized: Simplified processing steps
+                    magick.BackgroundColor = MagickColors.White;
+                    magick.Alpha(AlphaOption.Remove);
+                    
+                    // Further optimization: resize large images to maximize 1500 pixels on longest dimension
+                    if (magick.Width > 1500 || magick.Height > 1500)
+                    {
+                        double ratio = (double)magick.Width / magick.Height;
+                        uint newWidth, newHeight;
+                        
+                        if (ratio > 1) // Wider than tall
+                        {
+                            newWidth = 1500u;
+                            newHeight = (uint)(1500 / ratio);
+                        }
+                        else // Taller than wide
+                        {
+                            newHeight = 1500u;
+                            newWidth = (uint)(1500 * ratio);
+                        }
+                        
+                        magick.Resize(newWidth, newHeight);
+                    }
+
+                    // Optimize for size - use jpg instead of png for smaller file size
+                    using var memoryStream = new MemoryStream();
+                    magick.Format = MagickFormat.Jpg;
+                    magick.Quality = 85; // Further reduced for speed while maintaining readability
+                    
+                    // Use progressive JPEG for perceived faster loading
+                    magick.Settings.Interlace = Interlace.Plane;
+                    
+                    magick.Write(memoryStream);
+                    memoryStream.Position = 0;
+
+                    var pageImage = new InvoicePageImage
+                    {
+                        PageNumber = pageNumber,
+                        ImageData = memoryStream.ToArray()
+                    };
+
+                    _logger.LogDebug("Extracted optimized image for page {PageNumber}, size: {Size} bytes", pageNumber, pageImage.ImageData.Length);
+                    return pageImage;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in PDF page extraction for page {PageNumber}", pageNumber);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Extracts additional pages from a PDF for more comprehensive analysis when needed
+        /// </summary>
+        public async Task<List<InvoicePageImage>> ExtractAdditionalPagesAsync(Stream fileStream, int startPage = 2)
+        {
+            _logger.LogInformation("Extracting additional pages from PDF starting from page {StartPage}", startPage);
+
+            try
+            {
+                fileStream.Position = 0;
+                var pageImages = new List<InvoicePageImage>();
+
+                using var reader = new PdfReader(fileStream);
+                using var document = new PdfDocument(reader);
+
+                int numberOfPages = document.GetNumberOfPages();
+                
+                if (startPage > numberOfPages)
+                {
+                    _logger.LogInformation("No additional pages to process - requested start page {StartPage} exceeds total pages {TotalPages}", 
+                        startPage, numberOfPages);
+                    return pageImages;
+                }
+
+                for (int i = startPage; i <= numberOfPages; i++)
+                {
+                    _logger.LogInformation("Processing additional page {PageNumber} of {TotalPages}", i, numberOfPages);
+
+                    try
+                    {
+                        fileStream.Position = 0;
+
+                        byte[] pdfBytes;
+                        using (var ms = new MemoryStream())
+                        {
+                            await fileStream.CopyToAsync(ms);
+                            pdfBytes = ms.ToArray();
+                        }
+
+                        using (var magick = new MagickImage())
+                        {
+                            var readSettings = new MagickReadSettings
+                            {
+                                Density = new Density(200),
+                                Format = MagickFormat.Pdf,
+                                FrameIndex = (uint)(i - 1),
+                                FrameCount = 1u
+                            };
+
+                            magick.Read(pdfBytes, readSettings);
+                            magick.BackgroundColor = MagickColors.White;
+                            magick.Alpha(AlphaOption.Remove);
+
+                            using var memoryStream = new MemoryStream();
+                            magick.Format = MagickFormat.Png;
+                            magick.Quality = 90;
+                            magick.Write(memoryStream);
+                            memoryStream.Position = 0;
+
+                            var pageImage = new InvoicePageImage
+                            {
+                                PageNumber = i,
+                                ImageData = memoryStream.ToArray()
+                            };
+
+                            pageImages.Add(pageImage);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error in additional PDF page extraction for page {PageNumber}", i);
+                        throw;
+                    }
+                }
+
+                _logger.LogInformation("Successfully extracted {Count} additional pages", pageImages.Count);
+                return pageImages;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error extracting additional PDF pages");
+                throw;
+            }
+        }
+
+        /// <inheritdoc />
+        public async Task<VisualAnalysisResult> AnalyzeVisualElementsAsync(Stream fileStream)
+        {
+            _logger.LogInformation("Analyzing visual elements in PDF");
+            
+            try
+            {
+                var result = new VisualAnalysisResult();
+                
+                // Extract page images first
+                var pageImages = await ExtractPageImagesAsync(fileStream);
+                
+                if (pageImages.Count == 0)
+                {
+                    _logger.LogWarning("No pages found in PDF for visual analysis");
+                return result;
+                }
+                
+                // In a real implementation, this would use image analysis techniques
+                // (possibly via ML models) to detect logos, signatures, etc.
+                
+                // Detect logo (placeholder implementation)
+                result.HasLogo = DetectLogoInImages(pageImages);
+                
+                // Detect signature (placeholder implementation)
+                result.HasSignature = DetectSignatureInImages(pageImages);
+                
+                // Detect table structure (placeholder implementation) 
+                result.HasTableStructure = DetectTableStructureInImages(pageImages);
+                
+                // Detect visual anomalies (placeholder implementation)
+                result.DetectedAnomalies = DetectVisualAnomalies(pageImages);
+                
+                _logger.LogInformation("Visual analysis completed: " +
+                    "HasLogo={HasLogo}, HasSignature={HasSignature}, HasTableStructure={HasTableStructure}, " +
+                    "AnomaliesDetected={AnomaliesCount}", 
+                    result.HasLogo, result.HasSignature, result.HasTableStructure, result.DetectedAnomalies.Count);
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error analyzing visual elements in PDF");
+                throw;
+            }
+        }
+        
+        private bool DetectLogoInImages(List<InvoicePageImage> pageImages)
+        {
+            // This would use image recognition to detect company logos
+            // For demonstration purposes, we'll assume a logo is present on the first page
+            
+            if (pageImages.Count > 0)
+            {
+                // Placeholder for actual logo detection logic
+                // In a real implementation, this would use computer vision techniques
+                return true;
+            }
+            
+            return false;
+        }
+        
+        private bool DetectSignatureInImages(List<InvoicePageImage> pageImages)
+        {
+            // This would analyze the last page for signature marks
+            // For demonstration purposes, we'll simulate signature detection
+            
+            if (pageImages.Count > 0)
+            {
+                var lastPage = pageImages[pageImages.Count - 1];
+                
+                // Placeholder for actual signature detection logic
+                // In a real implementation, this would use pattern recognition
+                return true;
+            }
+            
+            return false;
+        }
+        
+        private bool DetectTableStructureInImages(List<InvoicePageImage> pageImages)
+        {
+            // This would detect table structures in the images
+            // For demonstration purposes, we'll simulate table detection
+            
+            if (pageImages.Count > 0)
+            {
+                // Placeholder for actual table structure detection logic
+                // In a real implementation, this would look for grid patterns
+                return true;
+            }
+            
+            return false;
+        }
+        
+        private List<VisualAnomalyDetection> DetectVisualAnomalies(List<InvoicePageImage> pageImages)
+        {
+            var anomalies = new List<VisualAnomalyDetection>();
+            
+            // This would analyze images for visual inconsistencies that might indicate fraud
+            // For demonstration purposes, we'll return an empty list
+            
+            return anomalies;
         }
         
         private void ExtractInvoiceData(Invoice invoice, string text)

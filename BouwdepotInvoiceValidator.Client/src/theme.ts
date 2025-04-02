@@ -1,69 +1,102 @@
 import { createTheme } from '@mui/material/styles';
 
+// Stater colors - based on provided website
+const staterColors = {
+  primary: '#562178', // Deep purple from Stater
+  secondary: '#6c757d',
+  success: '#28a745',
+  warning: '#ffc107',
+  error: '#dc3545',
+  info: '#17a2b8',
+  lightPurple: '#f4ebfa',
+  background: '#ffffff'
+};
+
+// Create a theme instance
 const theme = createTheme({
   palette: {
     primary: {
-      main: '#1976d2',
+      main: staterColors.primary,
     },
     secondary: {
-      main: '#dc004e',
+      main: staterColors.secondary,
     },
     error: {
-      main: '#f44336',
+      main: staterColors.error,
     },
     warning: {
-      main: '#ff9800',
-    },
-    success: {
-      main: '#4caf50',
+      main: staterColors.warning,
     },
     info: {
-      main: '#2196f3',
+      main: staterColors.info,
+    },
+    success: {
+      main: staterColors.success,
+    },
+    background: {
+      default: '#f8f9fa',
+      paper: staterColors.background,
     },
   },
   typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-    h1: {
-      fontSize: '2rem',
-      fontWeight: 500,
-    },
-    h2: {
-      fontSize: '1.75rem',
-      fontWeight: 500,
-    },
-    h3: {
-      fontSize: '1.5rem',
-      fontWeight: 500,
-    },
+    fontFamily: [
+      'Inter',
+      'Roboto',
+      '"Helvetica Neue"',
+      'Arial',
+      'sans-serif'
+    ].join(','),
     h4: {
-      fontSize: '1.25rem',
-      fontWeight: 500,
-    },
-    h5: {
-      fontSize: '1.1rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      color: staterColors.primary,
     },
     h6: {
-      fontSize: '1rem',
-      fontWeight: 500,
+      fontWeight: 600,
+      color: staterColors.primary,
     },
   },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
+          borderRadius: 8,
           textTransform: 'none',
+          fontWeight: 500,
         },
-      },
+        contained: {
+          boxShadow: 'none',
+        }
+      }
     },
     MuiCard: {
       styleOverrides: {
         root: {
-          borderRadius: '8px',
-        },
-      },
+          borderRadius: 8,
+        }
+      }
     },
-  },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        }
+      }
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 4,
+        }
+      }
+    },
+    MuiAlert: {
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+        }
+      }
+    }
+  }
 });
 
 export default theme;
