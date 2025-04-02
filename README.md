@@ -20,6 +20,8 @@ This project has been enhanced with multi-modal validation and audit transparenc
 - Updated `GeminiServiceProxy` to use the correct `Gemini.GeminiService` implementation
 - Added explicit registration for `BouwdepotInvoiceValidator.Services.Gemini.GeminiService`
 - Implemented factory pattern for `GeminiModelProvider` to ensure proper dependency resolution
+- Fixed lifetime scope issue by changing `AIModelProviderFactory` and `GeminiModelProvider` from singleton to scoped services
+- Removed caching of model provider in `UnifiedInvoiceValidationService` to prevent scoped service resolution from root provider
 
 ## New Features
 

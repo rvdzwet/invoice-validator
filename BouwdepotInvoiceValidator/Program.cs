@@ -91,12 +91,8 @@ builder.Services.AddSingleton<IVendorRepository, InMemoryVendorRepository>(); //
 builder.Services.AddScoped<IVendorProfileService, VendorProfileService>();
 
 // Register AI model provider services
-builder.Services.AddSingleton<AIModelProviderFactory>();
-builder.Services.AddSingleton<GeminiModelProvider>(sp => 
-    new GeminiModelProvider(
-        sp.GetRequiredService<ILogger<GeminiModelProvider>>(),
-        sp.GetRequiredService<IConfiguration>(),
-        sp.GetRequiredService<GeminiServiceBase>()));
+builder.Services.AddScoped<AIModelProviderFactory>();
+builder.Services.AddScoped<GeminiModelProvider>();
 builder.Services.AddSingleton<ImageProcessingService>();
 // GeminiImageGenerator is now created within GeminiAIService with the proper logger
 builder.Services.AddScoped<IAIDecisionExplainer, AIDecisionExplainer>();

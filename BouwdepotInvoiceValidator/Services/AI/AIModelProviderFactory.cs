@@ -57,13 +57,13 @@ namespace BouwdepotInvoiceValidator.Services.AI
         public static void RegisterProviders(IServiceCollection services)
         {
             // Register the factory
-            services.AddSingleton<AIModelProviderFactory>();
+            services.AddScoped<AIModelProviderFactory>();
             
             // Register model providers
-            services.AddSingleton<GeminiModelProvider>();
+            services.AddScoped<GeminiModelProvider>();
             
             // Add more provider registrations as needed
-            // services.AddSingleton<OpenAIModelProvider>();
+            // services.AddScoped<OpenAIModelProvider>();
         }
     }
 }

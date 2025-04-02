@@ -19,9 +19,6 @@ namespace BouwdepotInvoiceValidator.Services
         private readonly IPdfExtractionService _pdfExtractionService;
         private readonly IConfiguration _configuration;
         
-        // Cached AI model provider
-        private IAIModelProvider _modelProvider;
-        
         public UnifiedInvoiceValidationService(
             ILogger<UnifiedInvoiceValidationService> logger,
             AIModelProviderFactory modelProviderFactory,
@@ -35,9 +32,9 @@ namespace BouwdepotInvoiceValidator.Services
         }
         
         /// <summary>
-        /// Gets or initializes the AI model provider
+        /// Gets the AI model provider
         /// </summary>
-        private IAIModelProvider ModelProvider => _modelProvider ??= _modelProviderFactory.CreateProvider();
+        private IAIModelProvider ModelProvider => _modelProviderFactory.CreateProvider();
         
         /// <inheritdoc />
         public async Task<ValidationResult> ValidateInvoiceAsync(System.IO.Stream fileStream, string fileName)
