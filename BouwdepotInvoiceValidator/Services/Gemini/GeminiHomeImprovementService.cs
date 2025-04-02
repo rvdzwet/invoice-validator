@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
 
 namespace BouwdepotInvoiceValidator.Services.Gemini
 {
@@ -486,22 +487,37 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                     
                     if (fraudIndicators.Count > 0)
                     {
-                        // Add fraud detection
+                        // Calculate fraud risk score based on number of indicators and possibleFraud flag
+                        int fraudRiskScore = possibleFraud ? 70 : 30;
+                        
+                        // Add fraud detection with correct properties
                         result.FraudDetection = new FraudDetection
                         {
-                            RiskLevel = possibleFraud ? 70 : 30,
-                            FraudIndicatorsDetected = possibleFraud,
-                            DetectedIndicators = new List<FraudIndicator>()
+                            // Use enum for RiskLevel
+                            RiskLevel = possibleFraud ? FraudRiskLevel.High : FraudRiskLevel.Low,
+                            // Set FraudRiskScore instead of FraudIndicatorsDetected
+                            FraudRiskScore = fraudRiskScore,
+                            DetectedIndicators = new List<FraudIndicator>(),
+                            // Set RequiresManualReview based on possibleFraud
+                            RequiresManualReview = possibleFraud
                         };
                         
-                        // Add indicators
+                        // Add indicators with correct property names
                         foreach (var indicator in fraudIndicators)
                         {
                             result.FraudDetection.DetectedIndicators.Add(new FraudIndicator
                             {
-                                Name = indicator,
+                                // Use IndicatorName instead of Name
+                                IndicatorName = indicator,
+                                // Use Description instead of Reference
+                                Description = indicator,
                                 Evidence = indicator,
-                                Severity = possibleFraud ? 70 : 30
+                                // Use double for Severity (0.0-1.0 scale)
+                                Severity = possibleFraud ? 0.7 : 0.3,
+                                // Set Category to DocumentManipulation by default
+                                Category = FraudIndicatorCategory.DocumentManipulation,
+                                // Set Confidence
+                                Confidence = possibleFraud ? 0.8 : 0.5
                             });
                         }
                         

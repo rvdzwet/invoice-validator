@@ -16,20 +16,20 @@ namespace BouwdepotInvoiceValidator.Services
     public class GeminiService : GeminiServiceBase, IGeminiService
     {
         private readonly ILogger<GeminiService> _logger;
-        private readonly GeminiConversationService _conversationService;
-        private readonly GeminiDocumentAnalysisService _documentService;
-        private readonly GeminiHomeImprovementService _homeImprovementService;
-        private readonly GeminiFraudDetectionService _fraudDetectionService;
-        private readonly GeminiLineItemAnalysisService _lineItemService;
+        private readonly Gemini.GeminiConversationService _conversationService;
+        private readonly Gemini.GeminiDocumentAnalysisService _documentService;
+        private readonly Gemini.GeminiHomeImprovementService _homeImprovementService;
+        private readonly Gemini.GeminiFraudDetectionService _fraudDetectionService;
+        private readonly Gemini.GeminiLineItemAnalysisService _lineItemService;
 
         public GeminiService(
             ILogger<GeminiService> logger,
             IConfiguration configuration,
-            GeminiConversationService conversationService,
-            GeminiDocumentAnalysisService documentService,
-            GeminiHomeImprovementService homeImprovementService,
-            GeminiFraudDetectionService fraudDetectionService,
-            GeminiLineItemAnalysisService lineItemService) 
+            Gemini.GeminiConversationService conversationService,
+            Gemini.GeminiDocumentAnalysisService documentService,
+            Gemini.GeminiHomeImprovementService homeImprovementService,
+            Gemini.GeminiFraudDetectionService fraudDetectionService,
+            Gemini.GeminiLineItemAnalysisService lineItemService) 
             : base(logger, configuration)
         {
             _logger = logger;
@@ -174,15 +174,77 @@ namespace BouwdepotInvoiceValidator.Services
         public async Task<Models.Analysis.LineItemAnalysisResult> AnalyzeLineItemsAsync(Invoice invoice)
         {
             _logger.LogInformation("Analyzing invoice line items");
-            // The _lineItemService is a GeminiLineItemAnalysisService from the Gemini namespace
-            // which returns Models.Analysis.LineItemAnalysisResult
-            return await _lineItemService.AnalyzeLineItemsAsync(invoice);
+            
+            try
+            {
+                // The _lineItemService is a GeminiLineItemAnalysisService from the Gemini namespace
+                // which returns Models.Analysis.LineItemAnalysisResult
+                return await _lineItemService.AnalyzeLineItemsAsync(invoice);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error analyzing line items");
+                
+                // Return a minimal result with error information
+                return new Models.Analysis.LineItemAnalysisResult
+                {
+                    Categories = new List<string> { "Error" },
+                    PrimaryCategory = "Error",
+                    HomeImprovementRelevance = 0,
+                    LineItemAnalysis = new List<Models.Analysis.LineItemAnalysisDetails>(),
+                    OverallAssessment = $"Error analyzing line items: {ex.Message}",
+                    RawResponse = $"Error: {ex.Message}"
+                };
+            }
         }
+        /// <summary>
+        /// Uses Gemini AI to provide a detailed audit-ready assessment of the invoice
+        /// </summary>
+        /// <param name="invoice">The extracted invoice data</param>
         /// <returns>A validation result with detailed audit information</returns>
         public async Task<ValidationResult> GetAuditReadyAssessmentAsync(Invoice invoice)
         {
             _logger.LogInformation("Getting audit-ready assessment");
-            return await _lineItemService.GetAuditReadyAssessmentAsync(invoice);
+            
+            try
+            {
+                // Create a new validation result since the method doesn't exist in _lineItemService
+                var result = new ValidationResult { ExtractedInvoice = invoice };
+                
+                // Analyze line items first to get basic information
+                var lineItemAnalysis = await AnalyzeLineItemsAsync(invoice);
+                
+                // Set up the validation result based on line item analysis
+                result.IsValid = true;
+                result.ConfidenceScore = lineItemAnalysis.HomeImprovementRelevance;
+                result.DetailedReasoning = lineItemAnalysis.OverallAssessment;
+                
+                // Add an informational message
+                result.AddIssue(ValidationSeverity.Info, 
+                    $"Audit assessment based on line item analysis: {lineItemAnalysis.PrimaryCategory}");
+                
+                // If home improvement relevance is low, add a warning
+                if (lineItemAnalysis.HomeImprovementRelevance < 50)
+                {
+                    result.AddIssue(ValidationSeverity.Warning, 
+                        $"Low home improvement relevance: {lineItemAnalysis.HomeImprovementRelevance}%");
+                    result.IsValid = false;
+                }
+                
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting audit-ready assessment");
+                
+                // Return a minimal result with error information
+                var result = new ValidationResult { ExtractedInvoice = invoice };
+                result.IsValid = false;
+                result.AddIssue(ValidationSeverity.Error, 
+                    $"Error getting audit-ready assessment: {ex.Message}");
+                
+                return result;
+            }
         }
 
         #endregion

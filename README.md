@@ -2,6 +2,16 @@
 
 This project has been enhanced with multi-modal validation and audit transparency features to make the invoice validation process more robust and transparent.
 
+## Recent Updates
+
+### Build Fixes (April 2025)
+
+- Fixed service dependency issues in `GeminiServiceProxy` to properly reference the correct Gemini services
+- Corrected namespace references for Gemini services to use the proper `Gemini` namespace
+- Added missing `ExtractInvoiceDataFromImagesAsync` method to `GeminiAdvancedAnalysisService`
+- Fixed property mapping in `GeminiAdvancedAnalysisService` to match the `Invoice` and `PaymentDetails` models
+- Resolved type conversion issues between decimal and int values in line item processing
+
 ## New Features
 
 ### 1. Multi-Modal Validation

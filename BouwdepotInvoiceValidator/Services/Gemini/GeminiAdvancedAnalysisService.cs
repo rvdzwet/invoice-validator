@@ -1,477 +1,349 @@
 using System;
 using System.Collections.Generic;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
-using BouwdepotInvoiceValidator.Models.Analysis; // Added using directive
+using BouwdepotInvoiceValidator.Models.Analysis;
 
 namespace BouwdepotInvoiceValidator.Services.Gemini
 {
     /// <summary>
-    /// Service for performing comprehensive, multi-faceted analysis of invoices using all Gemini AI services
+    /// Service for advanced analysis of invoices using Gemini AI
     /// </summary>
     public class GeminiAdvancedAnalysisService : GeminiServiceBase
     {
-        private readonly ILoggerFactory _loggerFactory;
-        private readonly ILogger<GeminiAdvancedAnalysisService> _logger;
-        private readonly GeminiDocumentAnalysisService _documentService;
-        private readonly GeminiHomeImprovementService _homeImprovementService;
-        private readonly GeminiFraudDetectionService _fraudDetectionService;
-        private readonly GeminiLineItemAnalysisService _lineItemService;
-
-        public GeminiAdvancedAnalysisService(
-            ILoggerFactory loggerFactory,
-            IConfiguration configuration)
-            : base(loggerFactory.CreateLogger<GeminiServiceBase>(), configuration) // Pass base logger
+        public GeminiAdvancedAnalysisService(ILogger<GeminiAdvancedAnalysisService> logger, IConfiguration configuration)
+            : base(logger, configuration)
         {
-            _loggerFactory = loggerFactory;
-            _logger = _loggerFactory.CreateLogger<GeminiAdvancedAnalysisService>();
-            
-            // Initialize specialized services
-            _documentService = new GeminiDocumentAnalysisService(
-                _loggerFactory.CreateLogger<GeminiDocumentAnalysisService>(), configuration);
-                
-            _homeImprovementService = new GeminiHomeImprovementService(
-                _loggerFactory.CreateLogger<GeminiHomeImprovementService>(), configuration);
-                
-            _fraudDetectionService = new GeminiFraudDetectionService(
-                _loggerFactory.CreateLogger<GeminiFraudDetectionService>(), configuration);
-                
-            _lineItemService = new GeminiLineItemAnalysisService(
-                _loggerFactory.CreateLogger<GeminiLineItemAnalysisService>(), configuration);
         }
 
         /// <summary>
-        /// Performs a comprehensive analysis of an invoice using all available Gemini AI capabilities
+        /// Uses Gemini AI to extract invoice data from the PDF images
         /// </summary>
-        /// <param name="invoice">The invoice to analyze</param>
-        /// <returns>A comprehensive response containing all analysis results</returns>
-        public async Task<GeminiComprehensiveResponse> PerformComprehensiveAnalysisAsync(Invoice invoice)
+        /// <param name="invoice">The invoice with page images</param>
+        /// <returns>The invoice with extracted data from the images</returns>
+        public async Task<Invoice> ExtractInvoiceDataFromImagesAsync(Invoice invoice)
         {
-            _logger.LogInformation("Starting comprehensive invoice analysis");
-            
-            var response = new GeminiComprehensiveResponse
-            {
-                AnalysisStartTime = DateTime.Now
-            };
+            _logger.LogInformation("Extracting invoice data from images using Gemini AI");
             
             try
             {
-                // Step 1: Document verification and extraction (if needed)
-                if (string.IsNullOrEmpty(invoice.InvoiceNumber) || !invoice.InvoiceDate.HasValue || invoice.TotalAmount <= 0)
+                // Make sure we have page images
+                if (invoice.PageImages == null || invoice.PageImages.Count == 0)
                 {
-                    _logger.LogInformation("Invoice data incomplete, performing extraction from images");
-                    
-                    if (invoice.PageImages != null && invoice.PageImages.Count > 0)
-                    {
-                        try
-                        {
-                            invoice = await _documentService.ExtractInvoiceDataFromImagesAsync(invoice);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Error extracting invoice data from images");
-                            response.AddValidationIssue(ValidationSeverity.Error, 
-                                $"Failed to extract invoice data from images: {ex.Message}");
-                        }
-                    }
+                    _logger.LogWarning("Invoice data extraction requested but no page images are available");
+                    return invoice;
                 }
                 
-                // Step 2: Run multiple analyses in parallel for efficiency
-                var documentTask = VerifyDocumentAsync(invoice, response);
-                var homeImprovementTask = AnalyzeHomeImprovementAsync(invoice, response);
-                var lineItemTask = AnalyzeLineItemsAsync(invoice, response);
+                // Prepare the extraction prompt
+                var prompt = BuildExtractionPrompt();
                 
-                // Wait for all tasks to complete, regardless of success/failure
-                // Removed LogTaskError calls as the tasks do not return Task<T>
-                await Task.WhenAll(
-                    documentTask,
-                    homeImprovementTask,
-                    lineItemTask
-                );
-
-                // Step 3: Run fraud detection (depends on document verification)
-                try
-                {
-                    bool detectedTampering = response.PossibleFraud;
-                    await AnalyzeFraudAsync(invoice, detectedTampering, response);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during fraud detection analysis");
-                    response.AddValidationIssue(ValidationSeverity.Error, 
-                        $"Failed to perform fraud detection: {ex.Message}");
-                }
+                // Call Gemini API with multi-modal content
+                var response = await CallGeminiApiAsync(prompt, invoice.PageImages, "InvoiceDataExtraction");
                 
-                // Step 4: Get audit-ready assessment if requested
-                try
-                {
-                    await GetAuditAssessmentAsync(invoice, response);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during audit assessment");
-                    response.AddValidationIssue(ValidationSeverity.Error, 
-                        $"Failed to generate audit assessment: {ex.Message}");
-                }
+                // Parse the response and update the invoice
+                var updatedInvoice = ParseExtractionResponse(response, invoice);
                 
-                // Step 5: Summarize and finalize results
-                response.SummarizeResults();
+                _logger.LogInformation("Invoice data extraction completed for {FileName}", invoice.FileName);
                 
-                _logger.LogInformation("Comprehensive analysis completed: IsValid={IsValid}, ConfidenceScore={ConfidenceScore}", 
-                    response.IsValid, response.OverallConfidenceScore);
-                
-                return response;
+                return updatedInvoice;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error during comprehensive analysis");
-                response.AddValidationIssue(ValidationSeverity.Error, 
-                    $"Comprehensive analysis failed: {ex.Message}");
-                
-                response.MarkAnalysisComplete();
-                response.IsValid = false;
-                return response;
+                _logger.LogError(ex, "Error extracting invoice data from images");
+                return invoice;
             }
         }
 
-        /// <summary>
-        /// Performs a focused analysis on a specific aspect of the invoice
-        /// </summary>
-        /// <param name="invoice">The invoice to analyze</param>
-        /// <param name="analysisType">The type of analysis to perform</param>
-        /// <returns>A validation result containing the analysis</returns>
-        public async Task<ValidationResult> PerformTargetedAnalysisAsync(Invoice invoice, string analysisType)
-        {
-            _logger.LogInformation("Performing targeted analysis: {AnalysisType}", analysisType);
-            
-            switch (analysisType.ToLowerInvariant())
-            {
-                case "document":
-                    return await _documentService.VerifyDocumentTypeAsync(invoice);
-                    
-                case "homeimprovement":
-                    return await _homeImprovementService.ValidateHomeImprovementAsync(invoice);
-                    
-                case "multimodal":
-                    return await _homeImprovementService.ValidateWithMultiModalAnalysisAsync(invoice);
-                    
-                case "audit":
-                    return await _lineItemService.GetAuditReadyAssessmentAsync(invoice);
-                    
-                default:
-                    var result = new ValidationResult { ExtractedInvoice = invoice };
-                    result.AddIssue(ValidationSeverity.Error, 
-                        $"Unknown analysis type: {analysisType}");
-                    result.IsValid = false;
-                    return result;
-            }
-        }
+        #region Helper Methods
         
-        /// <summary>
-        /// Maps a ValidationResult to the comprehensive response
-        /// </summary>
-        public void MapValidationResultToComprehensiveResponse(ValidationResult result, GeminiComprehensiveResponse response)
+        private string BuildExtractionPrompt()
         {
-            if (result == null) return;
+            var promptBuilder = new System.Text.StringBuilder();
             
-            // Copy validation issues
-            foreach (var issue in result.Issues)
+            promptBuilder.AppendLine("### INVOICE DATA EXTRACTION ###");
+            promptBuilder.AppendLine("You are a specialized invoice data extraction system.");
+            promptBuilder.AppendLine("Your task is to analyze the provided invoice image and extract key information.");
+            
+            promptBuilder.AppendLine("\n### EXTRACTION INSTRUCTIONS ###");
+            promptBuilder.AppendLine("Extract the following information from the invoice:");
+            promptBuilder.AppendLine("1. Invoice number");
+            promptBuilder.AppendLine("2. Invoice date");
+            promptBuilder.AppendLine("3. Due date (if available)");
+            promptBuilder.AppendLine("4. Vendor name");
+            promptBuilder.AppendLine("5. Vendor address");
+            promptBuilder.AppendLine("6. Vendor contact information (phone, email, website)");
+            promptBuilder.AppendLine("7. Customer name and address");
+            promptBuilder.AppendLine("8. Payment terms");
+            promptBuilder.AppendLine("9. Line items (description, quantity, unit price, total)");
+            promptBuilder.AppendLine("10. Subtotal");
+            promptBuilder.AppendLine("11. Tax amount and rate");
+            promptBuilder.AppendLine("12. Total amount");
+            promptBuilder.AppendLine("13. Payment instructions (bank details, etc.)");
+            
+            promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
+            promptBuilder.AppendLine("Respond with a JSON object in the following format:");
+            promptBuilder.AppendLine("{");
+            promptBuilder.AppendLine("  \"invoiceNumber\": \"string\",");
+            promptBuilder.AppendLine("  \"invoiceDate\": \"YYYY-MM-DD\",");
+            promptBuilder.AppendLine("  \"dueDate\": \"YYYY-MM-DD\",");
+            promptBuilder.AppendLine("  \"vendorName\": \"string\",");
+            promptBuilder.AppendLine("  \"vendorAddress\": \"string\",");
+            promptBuilder.AppendLine("  \"vendorContact\": {");
+            promptBuilder.AppendLine("    \"phone\": \"string\",");
+            promptBuilder.AppendLine("    \"email\": \"string\",");
+            promptBuilder.AppendLine("    \"website\": \"string\"");
+            promptBuilder.AppendLine("  },");
+            promptBuilder.AppendLine("  \"customerInfo\": \"string\",");
+            promptBuilder.AppendLine("  \"paymentTerms\": \"string\",");
+            promptBuilder.AppendLine("  \"lineItems\": [");
+            promptBuilder.AppendLine("    {");
+            promptBuilder.AppendLine("      \"description\": \"string\",");
+            promptBuilder.AppendLine("      \"quantity\": number,");
+            promptBuilder.AppendLine("      \"unitPrice\": number,");
+            promptBuilder.AppendLine("      \"totalPrice\": number");
+            promptBuilder.AppendLine("    }");
+            promptBuilder.AppendLine("  ],");
+            promptBuilder.AppendLine("  \"subtotal\": number,");
+            promptBuilder.AppendLine("  \"taxAmount\": number,");
+            promptBuilder.AppendLine("  \"taxRate\": number,");
+            promptBuilder.AppendLine("  \"totalAmount\": number,");
+            promptBuilder.AppendLine("  \"paymentInstructions\": \"string\",");
+            promptBuilder.AppendLine("  \"currency\": \"string\"");
+            promptBuilder.AppendLine("}");
+            
+            return promptBuilder.ToString();
+        }
+
+        private Invoice ParseExtractionResponse(string responseText, Invoice invoice)
+        {
+            try
             {
-                response.AddValidationIssue(issue.Severity, issue.Message);
-            }
-            
-            // Copy validity status
-            response.IsValid = result.IsValid && response.IsValid;
-            
-            // Copy fraud detection data if available
-            if (result.FraudDetection != null)
-            {
-                response.PossibleFraud = result.FraudDetection.FraudIndicatorsDetected;
-                response.FraudRiskLevel = result.FraudDetection.RiskLevel.ToString();
-                
-                if (result.FraudDetection.DetectedIndicators != null)
+                // Extract JSON part from response
+                var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
+                if (!jsonMatch.Success)
                 {
-                    foreach (var indicator in result.FraudDetection.DetectedIndicators)
+                    _logger.LogWarning("Could not extract JSON from Gemini extraction response");
+                    return invoice;
+                }
+                
+                var jsonResponse = jsonMatch.Value;
+                
+                // Use case-insensitive deserialization and allow trailing commas
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    AllowTrailingCommas = true,
+                    ReadCommentHandling = JsonCommentHandling.Skip
+                };
+                
+                // Parse using JsonDocument
+                using JsonDocument doc = JsonDocument.Parse(jsonResponse);
+                var root = doc.RootElement;
+                
+                // Update invoice with extracted data
+                
+                // Invoice number
+                if (root.TryGetProperty("invoiceNumber", out var invoiceNumberElement) && 
+                    invoiceNumberElement.ValueKind == JsonValueKind.String)
+                {
+                    invoice.InvoiceNumber = invoiceNumberElement.GetString();
+                }
+                
+                // Invoice date
+                if (root.TryGetProperty("invoiceDate", out var invoiceDateElement) && 
+                    invoiceDateElement.ValueKind == JsonValueKind.String)
+                {
+                    var dateString = invoiceDateElement.GetString();
+                    if (DateTime.TryParse(dateString, out var date))
                     {
-                        response.FraudIndicators.Add(indicator.Name);
+                        invoice.InvoiceDate = date;
                     }
                 }
                 
-                response.FraudAssessmentExplanation = result.FraudDetection.Notes;
-            }
-
-            // Copy home improvement data - Reverted change, IsHomeImprovement is not nullable
-            response.IsHomeImprovement = result.IsHomeImprovement;
-
-            // Copy document validation data - Corrected nullable assignment
-            response.IsValidInvoice = result.IsVerifiedInvoice ?? false;
-            response.DetectedDocumentType = result.DetectedDocumentType;
-            response.DocumentValidationConfidence = result.DocumentVerificationConfidence;
-
-            if (result.PresentInvoiceElements != null)
-            {
-                response.PresentInvoiceElements = result.PresentInvoiceElements;
-            }
-            
-            if (result.MissingInvoiceElements != null)
-            {
-                response.MissingInvoiceElements = result.MissingInvoiceElements;
-            }
-            
-            // Copy visual assessment data - REMOVED incorrect assignment due to type mismatch and Obsolete attribute
-            // if (result.VisualAssessments != null && result.VisualAssessments.Count > 0)
-            // {
-            //     // This assignment is incorrect: List<Models.VisualAssessment> vs List<Models.Analysis.DetailedVisualAssessment>
-            //     // response.VisualAssessments = result.VisualAssessments; 
-            //     response.HasVisualAnomalies = result.VisualAssessments.Exists(a => a.Score < 0);
-            // }
-
-            // Copy audit report data - REMOVED incorrect assignment due to type mismatch
-            // if (result.AuditReport != null)
-            // {
-            //     // This assignment is incorrect: Models.AuditReport vs Models.Analysis.AuditAssessment
-            //     // response.AuditAssessment = result.AuditReport;
-            // }
-
-            // Copy detailed reasoning
-            if (!string.IsNullOrEmpty(result.DetailedReasoning))
-            {
-                response.DetailedReasoning = result.DetailedReasoning;
-            }
-            
-            // Copy confidence score
-            if (result.ConfidenceScore > 0)
-            {
-                // Use minimum of existing score and new score as "weakest link" approach
-                if (response.OverallConfidenceScore > 0)
+                // Due date
+                if (root.TryGetProperty("dueDate", out var dueDateElement) && 
+                    dueDateElement.ValueKind == JsonValueKind.String)
                 {
-                    response.OverallConfidenceScore = Math.Min(response.OverallConfidenceScore, result.ConfidenceScore);
+                    var dateString = dueDateElement.GetString();
+                    if (DateTime.TryParse(dateString, out var date))
+                    {
+                        invoice.DueDate = date;
+                    }
+                }
+                
+                // Vendor name
+                if (root.TryGetProperty("vendorName", out var vendorNameElement) && 
+                    vendorNameElement.ValueKind == JsonValueKind.String)
+                {
+                    invoice.VendorName = vendorNameElement.GetString();
+                }
+                
+                // Vendor address
+                if (root.TryGetProperty("vendorAddress", out var vendorAddressElement) && 
+                    vendorAddressElement.ValueKind == JsonValueKind.String)
+                {
+                    invoice.VendorAddress = vendorAddressElement.GetString();
+                }
+                
+                // Customer info - store in a temporary variable since Invoice doesn't have CustomerInfo property
+                string customerInfo = string.Empty;
+                if (root.TryGetProperty("customerInfo", out var customerInfoElement) && 
+                    customerInfoElement.ValueKind == JsonValueKind.String)
+                {
+                    customerInfo = customerInfoElement.GetString() ?? string.Empty;
+                    // We could store this in a custom field or log it, but for now we'll just log it
+                    _logger.LogInformation("Extracted customer info: {CustomerInfo}", customerInfo);
+                }
+                
+                // Payment terms - store in PaymentDetails
+                if (root.TryGetProperty("paymentTerms", out var paymentTermsElement) && 
+                    paymentTermsElement.ValueKind == JsonValueKind.String)
+                {
+                    // Store in the PaymentDetails object
+                    if (invoice.PaymentDetails == null)
+                    {
+                        invoice.PaymentDetails = new PaymentDetails();
+                    }
+                    
+                    // Store as a payment reference in PaymentDetails
+                    invoice.PaymentDetails.PaymentReference = paymentTermsElement.GetString() ?? string.Empty;
+                }
+                
+                // Line items
+                if (root.TryGetProperty("lineItems", out var lineItemsElement) && 
+                    lineItemsElement.ValueKind == JsonValueKind.Array)
+                {
+                    invoice.LineItems = new List<InvoiceLineItem>();
+                    
+                    foreach (var item in lineItemsElement.EnumerateArray())
+                    {
+                        var lineItem = new InvoiceLineItem();
+                        
+                        if (item.TryGetProperty("description", out var descElement) && 
+                            descElement.ValueKind == JsonValueKind.String)
+                        {
+                            lineItem.Description = descElement.GetString();
+                        }
+                        
+                        if (item.TryGetProperty("quantity", out var quantityElement) && 
+                            quantityElement.ValueKind == JsonValueKind.Number)
+                        {
+                    // Convert decimal to int for Quantity
+                    lineItem.Quantity = (int)quantityElement.GetDecimal();
+                        }
+                        
+                        if (item.TryGetProperty("unitPrice", out var unitPriceElement) && 
+                            unitPriceElement.ValueKind == JsonValueKind.Number)
+                        {
+                            lineItem.UnitPrice = unitPriceElement.GetDecimal();
+                        }
+                        
+                        if (item.TryGetProperty("totalPrice", out var totalPriceElement) && 
+                            totalPriceElement.ValueKind == JsonValueKind.Number)
+                        {
+                            lineItem.TotalPrice = totalPriceElement.GetDecimal();
+                        }
+                        
+                        invoice.LineItems.Add(lineItem);
+                    }
+                }
+                
+                // Subtotal - Invoice doesn't have this property, so we'll calculate it from line items
+                if (root.TryGetProperty("subtotal", out var subtotalElement) && 
+                    subtotalElement.ValueKind == JsonValueKind.Number)
+                {
+                    decimal subtotal = subtotalElement.GetDecimal();
+                    _logger.LogInformation("Extracted subtotal: {Subtotal}", subtotal);
+                    
+                    // We could calculate this from line items if needed
+                    // For now, we'll just log it
+                }
+                
+                // Tax amount - Invoice has VatAmount
+                if (root.TryGetProperty("taxAmount", out var taxAmountElement) && 
+                    taxAmountElement.ValueKind == JsonValueKind.Number)
+                {
+                    invoice.VatAmount = taxAmountElement.GetDecimal();
+                }
+                
+                // Tax rate - Store in line items
+                if (root.TryGetProperty("taxRate", out var taxRateElement) && 
+                    taxRateElement.ValueKind == JsonValueKind.Number)
+                {
+                    decimal taxRate = taxRateElement.GetDecimal();
+                    
+                    // Apply the tax rate to all line items
+                    foreach (var lineItem in invoice.LineItems)
+                    {
+                        lineItem.VatRate = taxRate;
+                    }
+                }
+                
+                // Total amount
+                if (root.TryGetProperty("totalAmount", out var totalAmountElement) && 
+                    totalAmountElement.ValueKind == JsonValueKind.Number)
+                {
+                    invoice.TotalAmount = totalAmountElement.GetDecimal();
+                }
+                
+                // Payment instructions - Store in PaymentDetails
+                if (root.TryGetProperty("paymentInstructions", out var paymentInstructionsElement) && 
+                    paymentInstructionsElement.ValueKind == JsonValueKind.String)
+                {
+                    if (invoice.PaymentDetails == null)
+                    {
+                        invoice.PaymentDetails = new PaymentDetails();
+                    }
+                    
+                    string instructions = paymentInstructionsElement.GetString() ?? string.Empty;
+                    
+                    // Extract IBAN if present
+                    var ibanMatch = Regex.Match(instructions, @"[A-Z]{2}[0-9]{2}[A-Z0-9]{4}[0-9]{7}([A-Z0-9]?){0,16}");
+                    if (ibanMatch.Success)
+                    {
+                        invoice.PaymentDetails.IBAN = ibanMatch.Value;
+                    }
+                    
+                    // Store the full instructions in the PaymentReference field
+                    if (!string.IsNullOrEmpty(invoice.PaymentDetails.PaymentReference))
+                    {
+                        invoice.PaymentDetails.PaymentReference += Environment.NewLine;
+                    }
+                    
+                    invoice.PaymentDetails.PaymentReference += instructions;
+                }
+                
+                // Currency
+                if (root.TryGetProperty("currency", out var currencyElement) && 
+                    currencyElement.ValueKind == JsonValueKind.String)
+                {
+                    invoice.Currency = currencyElement.GetString();
+                }
+                
+                // Store the raw response in RawText for debugging
+                if (string.IsNullOrEmpty(invoice.RawText))
+                {
+                    invoice.RawText = responseText;
                 }
                 else
                 {
-                    response.OverallConfidenceScore = result.ConfidenceScore;
+                    // Append to existing raw text
+                    invoice.RawText += Environment.NewLine + "--- EXTRACTION RESPONSE ---" + Environment.NewLine + responseText;
                 }
-            }
-        }
-        
-        private void LogTaskError<T>(Task<T> task, string analysisName)
-        {
-            if (task.IsFaulted && task.Exception != null)
-            {
-                _logger.LogError(task.Exception, "Error during {AnalysisName}", analysisName);
-            }
-        }
-
-        #region Analysis Tasks
-
-        private async Task VerifyDocumentAsync(Invoice invoice, GeminiComprehensiveResponse response)
-        {
-            try
-            {
-                var result = await _documentService.VerifyDocumentTypeAsync(invoice);
                 
-                // Store raw response
-                response.DocumentAnalysisResponse = result.RawGeminiResponse;
-                
-                // Map validation result to comprehensive response
-                MapValidationResultToComprehensiveResponse(result, response);
-                
-                _logger.LogInformation("Document verification completed: IsValid={IsValid}, Type={Type}", 
-                    result.IsVerifiedInvoice, result.DetectedDocumentType);
+                return invoice;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error verifying document");
-                response.AddValidationIssue(ValidationSeverity.Error, 
-                    $"Document verification failed: {ex.Message}");
+                _logger.LogError(ex, "Error parsing extraction response");
+                return invoice;
             }
         }
         
-        private async Task AnalyzeHomeImprovementAsync(Invoice invoice, GeminiComprehensiveResponse response)
-        {
-            try
-            {
-                ValidationResult result;
-                
-                // Use multi-modal analysis if images are available
-                if (invoice.PageImages != null && invoice.PageImages.Count > 0)
-                {
-                    result = await _homeImprovementService.ValidateWithMultiModalAnalysisAsync(invoice);
-                    response.MultiModalResponse = result.RawGeminiResponse;
-                }
-                else
-                {
-                    result = await _homeImprovementService.ValidateHomeImprovementAsync(invoice);
-                    response.HomeImprovementResponse = result.RawGeminiResponse;
-                }
-                
-                // Map validation result to comprehensive response
-                MapValidationResultToComprehensiveResponse(result, response);
-                
-                // Set specific home improvement properties
-                response.HomeImprovementConfidence = result.ConfidenceScore / 100.0;
-                
-                if (result.PurchaseAnalysis != null)
-                {
-                    response.HomeImprovementCategory = result.PurchaseAnalysis.PrimaryPurpose;
-                    response.HomeImprovementExplanation = result.PurchaseAnalysis.Summary;
-                }
-                
-                _logger.LogInformation("Home improvement analysis completed: IsHomeImprovement={IsHomeImprovement}, Confidence={Confidence}", 
-                    result.IsHomeImprovement, result.ConfidenceScore);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error analyzing home improvement relevance");
-                response.AddValidationIssue(ValidationSeverity.Error, 
-                    $"Home improvement analysis failed: {ex.Message}");
-            }
-        }
-        
-        private async Task AnalyzeLineItemsAsync(Invoice invoice, GeminiComprehensiveResponse response)
-        {
-            try
-            {
-                // Skip line item analysis if no line items are available
-                if (invoice.LineItems == null || invoice.LineItems.Count == 0)
-                {
-                    _logger.LogWarning("Skipping line item analysis - no line items available");
-                    response.AddValidationIssue(ValidationSeverity.Info, 
-                        "No line items available for analysis");
-                    return;
-                }
-                
-                var result = await _lineItemService.AnalyzeLineItemsAsync(invoice);
-                
-                // Store raw response
-                response.LineItemAnalysisResponse = result.RawResponse;
-                
-                // Store line item analysis
-                response.LineItemAnalysis = result;
-                
-                // Set home improvement category from line item analysis if not already set
-                if (string.IsNullOrEmpty(response.HomeImprovementCategory) &&
-                    !string.IsNullOrEmpty(result.PrimaryCategory))
-                {
-                    response.HomeImprovementCategory = result.PrimaryCategory;
-                }
-                
-                // Set home improvement confidence from line item analysis if not already set
-                if (response.HomeImprovementConfidence == 0 && result.HomeImprovementRelevance > 0)
-                {
-                    response.HomeImprovementConfidence = result.HomeImprovementRelevance / 100.0;
-                }
-                
-                // Use line item assessment for detailed reasoning if not already set
-                if (string.IsNullOrEmpty(response.DetailedReasoning) && 
-                    !string.IsNullOrEmpty(result.OverallAssessment))
-                {
-                    response.DetailedReasoning = result.OverallAssessment;
-                }
-                
-                _logger.LogInformation("Line item analysis completed: PrimaryCategory={PrimaryCategory}, HomeImprovementRelevance={Relevance}", 
-                    result.PrimaryCategory, result.HomeImprovementRelevance);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error analyzing line items");
-                response.AddValidationIssue(ValidationSeverity.Error, 
-                    $"Line item analysis failed: {ex.Message}");
-            }
-        }
-        
-        private async Task AnalyzeFraudAsync(Invoice invoice, bool detectedTampering, GeminiComprehensiveResponse response)
-        {
-            try
-            {
-                // Create a validation result to populate with fraud detection
-                var result = new ValidationResult { ExtractedInvoice = invoice };
-                
-                // Use enhanced fraud detection
-                bool possibleFraud = await _fraudDetectionService.EnhancedFraudDetectionAsync(invoice, result);
-                
-                // Store raw response if available
-                if (!string.IsNullOrEmpty(result.RawGeminiResponse))
-                {
-                    response.FraudDetectionResponse = result.RawGeminiResponse;
-                }
-                
-                // Map validation result to comprehensive response
-                MapValidationResultToComprehensiveResponse(result, response);
-                
-                // Set fraud properties
-                response.PossibleFraud = possibleFraud;
-                
-                if (result.FraudDetection != null)
-                {
-                    response.FraudRiskLevel = result.FraudDetection.RiskLevel switch
-                    {
-                        >= 70 => "High",
-                        >= 30 => "Medium",
-                        _ => "Low"
-                    };
-                    
-                    response.FraudDetectionConfidence = result.FraudDetection.RiskLevel / 100.0;
-                    response.FraudAssessmentExplanation = result.FraudDetection.Notes;
-                    response.RecommendedAction = result.FraudDetection.RecommendedAction;
-                    
-                    // Add recommended actions from fraud findings
-                    if (result.FraudDetection.DetectedIndicators != null)
-                    {
-                        foreach (var indicator in result.FraudDetection.DetectedIndicators)
-                        {
-                            if (!string.IsNullOrEmpty(indicator.Reference) && 
-                                !response.FraudRecommendedActions.Contains(indicator.Reference))
-                            {
-                                response.FraudRecommendedActions.Add(indicator.Reference);
-                            }
-                        }
-                    }
-                }
-                
-                _logger.LogInformation("Fraud detection completed: PossibleFraud={PossibleFraud}, RiskLevel={RiskLevel}", 
-                    possibleFraud, response.FraudRiskLevel);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in fraud detection");
-                response.AddValidationIssue(ValidationSeverity.Error, 
-                    $"Fraud detection failed: {ex.Message}");
-            }
-        }
-        
-        private async Task GetAuditAssessmentAsync(Invoice invoice, GeminiComprehensiveResponse response)
-        {
-            try
-            {
-                var result = await _lineItemService.GetAuditReadyAssessmentAsync(invoice);
-                
-                // Store raw response
-                response.AuditAssessmentResponse = result.RawGeminiResponse;
-                
-                // Map validation result to comprehensive response
-                MapValidationResultToComprehensiveResponse(result, response);
-                
-                // Use audit summary for detailed reasoning if not already set
-                // Use ExecutiveSummary instead of Summary
-                if (string.IsNullOrEmpty(response.DetailedReasoning) && result.AuditReport != null &&
-                    !string.IsNullOrEmpty(result.AuditReport.ExecutiveSummary))
-                {
-                    response.DetailedReasoning = result.AuditReport.ExecutiveSummary;
-                }
-
-                _logger.LogInformation("Audit assessment completed: IsValid={IsValid}", result.IsValid);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error in audit assessment");
-                response.AddValidationIssue(ValidationSeverity.Error, 
-                    $"Audit assessment failed: {ex.Message}");
-            }
-        }
-
         #endregion
     }
 }

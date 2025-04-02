@@ -13,25 +13,28 @@ namespace BouwdepotInvoiceValidator.Services
     public class GeminiServiceProxy : IGeminiService
     {
         private readonly ILogger<GeminiServiceProxy> _logger;
-        private readonly GeminiDocumentService _documentService;
-        private readonly GeminiHomeImprovementService _homeImprovementService;
-        private readonly GeminiAdvancedAnalysisService _advancedAnalysisService;
-        private readonly GeminiLineItemAnalysisService _lineItemAnalysisService;
-        private readonly BouwdepotInvoiceValidator.Services.Gemini.GeminiService _conversationService;
+        private readonly Gemini.GeminiDocumentAnalysisService _documentService;
+        private readonly Gemini.GeminiHomeImprovementService _homeImprovementService;
+        private readonly Gemini.GeminiAdvancedAnalysisService _advancedAnalysisService;
+        private readonly Gemini.GeminiLineItemAnalysisService _lineItemAnalysisService;
+        private readonly Gemini.GeminiFraudDetectionService _fraudDetectionService;
+        private readonly Gemini.GeminiService _conversationService;
         
         public GeminiServiceProxy(
             ILogger<GeminiServiceProxy> logger,
-            GeminiDocumentService documentService,
-            GeminiHomeImprovementService homeImprovementService,
-            GeminiAdvancedAnalysisService advancedAnalysisService,
-            GeminiLineItemAnalysisService lineItemAnalysisService,
-            BouwdepotInvoiceValidator.Services.Gemini.GeminiService conversationService)
+            Gemini.GeminiDocumentAnalysisService documentService,
+            Gemini.GeminiHomeImprovementService homeImprovementService,
+            Gemini.GeminiAdvancedAnalysisService advancedAnalysisService,
+            Gemini.GeminiLineItemAnalysisService lineItemAnalysisService,
+            Gemini.GeminiFraudDetectionService fraudDetectionService,
+            Gemini.GeminiService conversationService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
             _homeImprovementService = homeImprovementService ?? throw new ArgumentNullException(nameof(homeImprovementService));
             _advancedAnalysisService = advancedAnalysisService ?? throw new ArgumentNullException(nameof(advancedAnalysisService));
             _lineItemAnalysisService = lineItemAnalysisService ?? throw new ArgumentNullException(nameof(lineItemAnalysisService));
+            _fraudDetectionService = fraudDetectionService ?? throw new ArgumentNullException(nameof(fraudDetectionService));
             _conversationService = conversationService ?? throw new ArgumentNullException(nameof(conversationService));
             
             _logger.LogInformation("GeminiServiceProxy initialized with specialized service implementations");
@@ -101,30 +104,30 @@ namespace BouwdepotInvoiceValidator.Services
         }
         
         /// <summary>
-        /// Delegates fraud detection to GeminiHomeImprovementService
+        /// Delegates fraud detection to GeminiFraudDetectionService
         /// </summary>
         public async Task<bool> DetectFraudAsync(Invoice invoice, bool detectedTampering)
         {
-            _logger.LogInformation("Delegating fraud detection for {FileName} to GeminiHomeImprovementService", invoice.FileName);
-            return await _homeImprovementService.DetectFraudAsync(invoice, detectedTampering);
+            _logger.LogInformation("Delegating fraud detection for {FileName} to GeminiFraudDetectionService", invoice.FileName);
+            return await _fraudDetectionService.DetectFraudAsync(invoice, detectedTampering);
         }
         
         /// <summary>
-        /// Delegates multi-modal analysis to GeminiAdvancedAnalysisService
+        /// Delegates multi-modal analysis to GeminiHomeImprovementService
         /// </summary>
         public async Task<ValidationResult> ValidateWithMultiModalAnalysisAsync(Invoice invoice)
         {
-            _logger.LogInformation("Delegating multi-modal analysis for {FileName} to GeminiAdvancedAnalysisService", invoice.FileName);
-            return await _advancedAnalysisService.ValidateWithMultiModalAnalysisAsync(invoice);
+            _logger.LogInformation("Delegating multi-modal analysis for {FileName} to GeminiHomeImprovementService", invoice.FileName);
+            return await _homeImprovementService.ValidateWithMultiModalAnalysisAsync(invoice);
         }
         
         /// <summary>
-        /// Delegates audit-ready assessment to GeminiAdvancedAnalysisService
+        /// Delegates audit-ready assessment to GeminiLineItemAnalysisService
         /// </summary>
         public async Task<ValidationResult> GetAuditReadyAssessmentAsync(Invoice invoice)
         {
-            _logger.LogInformation("Delegating audit-ready assessment for {FileName} to GeminiAdvancedAnalysisService", invoice.FileName);
-            return await _advancedAnalysisService.GetAuditReadyAssessmentAsync(invoice);
+            _logger.LogInformation("Delegating audit-ready assessment for {FileName} to GeminiLineItemAnalysisService", invoice.FileName);
+            return await _lineItemAnalysisService.GetAuditReadyAssessmentAsync(invoice);
         }
         
         /// <summary>
