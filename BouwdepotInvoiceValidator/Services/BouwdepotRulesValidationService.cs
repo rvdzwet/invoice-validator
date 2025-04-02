@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
+// using BouwdepotInvoiceValidator.Models.Analysis; // Remove this using statement
 using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services

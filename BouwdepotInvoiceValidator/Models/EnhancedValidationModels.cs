@@ -174,7 +174,7 @@ namespace BouwdepotInvoiceValidator.Models.Enhanced
     /// </summary>
     public enum FraudIndicatorCategory
     {
-        DocumentManipulation,
+        DocumentManipulation, 
         ContentInconsistency,
         AnomalousPricing,
         VendorIssue,
@@ -501,7 +501,7 @@ namespace BouwdepotInvoiceValidator.Models.Enhanced
         /// <summary>
         /// Overall fraud risk score (0-100)
         /// </summary>
-        public int FraudRiskScore { get; set; }
+        public int FraudRiskScore { get; set; } // Added missing property
         
         /// <summary>
         /// Risk level assessment

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Services.AI;
 using BouwdepotInvoiceValidator.Services.Security;
 using BouwdepotInvoiceValidator.Services.Vendors;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
 
 namespace BouwdepotInvoiceValidator.Services
 {
@@ -418,13 +419,13 @@ namespace BouwdepotInvoiceValidator.Services
                                 // Add to fraud detection indicators
                                 if (anomaly.Severity > 0.5)
                                 {
-                                    validationResult.FraudDetection.DetectedIndicators.Add(new BouwdepotInvoiceValidator.Models.FraudIndicator
+                                    validationResult.FraudDetection.DetectedIndicators.Add(new BouwdepotInvoiceValidator.Models.Enhanced.FraudIndicator // Use Enhanced model
                                     {
-                                        IndicatorName = anomaly.AnomalyType,
-                                        Description = anomaly.Description,
+                                        IndicatorName = anomaly.AnomalyType, // Property exists in Enhanced.FraudIndicator
+                                        Description = anomaly.Description, // Property exists in Enhanced.FraudIndicator
                                         Evidence = $"Detected by vendor profiling system on {anomaly.DetectedDate:g}",
-                                        Severity = anomaly.Severity,
-                                        Category = BouwdepotInvoiceValidator.Models.FraudIndicatorCategory.VendorIssue
+                                        Severity = anomaly.Severity, // Property exists in Enhanced.FraudIndicator
+                                        Category = Models.Enhanced.FraudIndicatorCategory.VendorIssue // Namespace already specified
                                     });
                                 }
                             }

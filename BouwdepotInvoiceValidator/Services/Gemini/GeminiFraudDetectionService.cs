@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Linq;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Using statement already exists
 
 namespace BouwdepotInvoiceValidator.Services.Gemini
 {
@@ -117,9 +119,9 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 // Initialize fraud detection with default values
                 result.FraudDetection = new FraudDetection
                 {
-                    RiskLevel = 0,
-                    FraudIndicatorsDetected = false,
-                    Notes = $"Error during analysis: {ex.Message}"
+                    RiskLevel = FraudRiskLevel.Low,
+                    FraudRiskScore = 0,
+                    RecommendedAction = $"Error during analysis: {ex.Message}"
                 };
                 
                 return false;
@@ -369,29 +371,40 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 using JsonDocument doc = JsonDocument.Parse(jsonResponse);
                 var root = doc.RootElement;
                 
-                // Initialize fraud detection object
+                // Initialize fraud detection object with correct properties
                 result.FraudDetection = new FraudDetection
                 {
-                    RiskLevel = 0,
-                    FraudIndicatorsDetected = false,
+                    RiskLevel = FraudRiskLevel.Low,
+                    FraudRiskScore = 0,
                     DetectedIndicators = new List<FraudIndicator>(),
                     RecommendedAction = "No action required",
-                    Notes = "No fraud indicators detected"
+                    RequiresManualReview = false,
+                    SuggestedVerificationSteps = new List<string>()
                 };
                 
                 // Extract fraud risk score
+                int fraudRiskScore = 0;
                 if (root.TryGetProperty("fraudRiskScore", out var riskScoreElement) &&
                     riskScoreElement.ValueKind == JsonValueKind.Number)
                 {
-                    result.FraudDetection.RiskLevel = riskScoreElement.GetInt32();
+                    fraudRiskScore = riskScoreElement.GetInt32();
+                    result.FraudDetection.FraudRiskScore = fraudRiskScore;
                 }
+
+                // Set RiskLevel based on score
+                result.FraudDetection.RiskLevel = fraudRiskScore switch
+                {
+                    < 25 => FraudRiskLevel.Low,
+                    < 50 => FraudRiskLevel.Medium,
+                    < 75 => FraudRiskLevel.High,
+                    _ => FraudRiskLevel.Critical
+                };
                 
                 // Check if possibleFraud is true
                 if (root.TryGetProperty("possibleFraud", out var possibleFraudElement) &&
                     possibleFraudElement.ValueKind == JsonValueKind.True)
                 {
                     possibleFraud = true;
-                    result.FraudDetection.FraudIndicatorsDetected = true;
                 }
                 
                 // Check risk level as a backup indicator
@@ -406,7 +419,6 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                         riskLevel.Equals("Medium", StringComparison.OrdinalIgnoreCase))
                     {
                         possibleFraud = true;
-                        result.FraudDetection.FraudIndicatorsDetected = true;
                     }
                 }
                 
@@ -417,11 +429,19 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                     result.FraudDetection.RecommendedAction = actionElement.GetString() ?? string.Empty;
                 }
                 
-                // Get summary as notes
+                // Get requires manual review
+                if (root.TryGetProperty("requiresManualReview", out var reviewElement) &&
+                    reviewElement.ValueKind == JsonValueKind.True)
+                {
+                    result.FraudDetection.RequiresManualReview = true;
+                }
+                
+                // Get summary for detailed reasoning
                 if (root.TryGetProperty("summary", out var summaryElement) && 
                     summaryElement.ValueKind == JsonValueKind.String)
                 {
-                    result.FraudDetection.Notes = summaryElement.GetString() ?? string.Empty;
+                    // Store in DetailedReasoning since Notes doesn't exist
+                    result.DetailedReasoning = summaryElement.GetString() ?? string.Empty;
                 }
                 
                 // Get detected indicators
@@ -435,22 +455,23 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                         if (indicator.TryGetProperty("indicatorName", out var nameElement) && 
                             nameElement.ValueKind == JsonValueKind.String)
                         {
-                            fraudIndicator.Name = nameElement.GetString() ?? string.Empty;
+                            // Use IndicatorName instead of Name
+                            fraudIndicator.IndicatorName = nameElement.GetString() ?? string.Empty;
                         }
                         
                         if (indicator.TryGetProperty("description", out var descElement) && 
                             descElement.ValueKind == JsonValueKind.String)
                         {
-                            // For backward compatibility, use Description in Reference field
-                            fraudIndicator.Reference = descElement.GetString() ?? string.Empty;
+                            // Use Description instead of Reference
+                            fraudIndicator.Description = descElement.GetString() ?? string.Empty;
                         }
                         
                         if (indicator.TryGetProperty("severity", out var severityElement))
                         {
                             if (severityElement.ValueKind == JsonValueKind.Number)
                             {
-                                // Convert from 0.0-1.0 to 0-100
-                                fraudIndicator.Severity = (int)(severityElement.GetDouble() * 100);
+                                // Convert from 0.0-1.0 to 0-1 double
+                                fraudIndicator.Severity = severityElement.GetDouble();
                             }
                         }
                         
@@ -463,16 +484,22 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                         if (indicator.TryGetProperty("category", out var categoryElement) && 
                             categoryElement.ValueKind == JsonValueKind.String)
                         {
-                            // Store the category in the name with a prefix
-                            var category = categoryElement.GetString() ?? string.Empty;
-                            if (!string.IsNullOrEmpty(category))
+                            // Parse category string to enum
+                            var categoryStr = categoryElement.GetString() ?? string.Empty;
+                            if (Enum.TryParse<FraudIndicatorCategory>(categoryStr, true, out var category))
                             {
-                                fraudIndicator.Name = $"{category}: {fraudIndicator.Name}";
+                                fraudIndicator.Category = category;
                             }
                         }
                         
+                        if (indicator.TryGetProperty("confidence", out var confidenceElement) &&
+                            confidenceElement.ValueKind == JsonValueKind.Number)
+                        {
+                            fraudIndicator.Confidence = confidenceElement.GetDouble();
+                        }
+                        
                         // Add the indicator to the list if it has a name
-                        if (!string.IsNullOrEmpty(fraudIndicator.Name))
+                        if (!string.IsNullOrEmpty(fraudIndicator.IndicatorName))
                         {
                             result.FraudDetection.DetectedIndicators.Add(fraudIndicator);
                         }
@@ -482,8 +509,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                     if (!possibleFraud && result.FraudDetection.DetectedIndicators.Count > 0)
                     {
                         // If any indicator has high severity, consider it possible fraud
-                        possibleFraud = result.FraudDetection.DetectedIndicators.Any(i => i.Severity > 70);
-                        result.FraudDetection.FraudIndicatorsDetected = possibleFraud;
+                        possibleFraud = result.FraudDetection.DetectedIndicators.Any(i => i.Severity > 0.7);
                     }
                 }
                 
@@ -502,7 +528,10 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                     
                     if (steps.Count > 0)
                     {
-                        // Add to the recommended action
+                        // Add to SuggestedVerificationSteps
+                        result.FraudDetection.SuggestedVerificationSteps = steps;
+                        
+                        // Also add to the recommended action for backward compatibility
                         result.FraudDetection.RecommendedAction += 
                             $" Suggested verification steps: {string.Join("; ", steps)}";
                     }
@@ -517,9 +546,9 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 // Initialize fraud detection with error information
                 result.FraudDetection = new FraudDetection
                 {
-                    RiskLevel = 0,
-                    FraudIndicatorsDetected = false,
-                    Notes = $"Error parsing fraud detection response: {ex.Message}"
+                    RiskLevel = FraudRiskLevel.Low,
+                    FraudRiskScore = 0,
+                    RecommendedAction = $"Error parsing fraud detection response: {ex.Message}"
                 };
                 
                 return false;

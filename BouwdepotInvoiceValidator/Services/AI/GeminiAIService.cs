@@ -8,6 +8,7 @@ using System.Threading;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
 
 namespace BouwdepotInvoiceValidator.Services.AI
 {
@@ -550,13 +551,13 @@ namespace BouwdepotInvoiceValidator.Services.AI
                             string evidence = GetJsonStringValue(indicator, "evidence");
                             double severity = GetJsonDoubleValue(indicator, "severity", 0.0);
                             
-                            result.FraudDetection.DetectedIndicators.Add(new BouwdepotInvoiceValidator.Models.FraudIndicator
+                            result.FraudDetection.DetectedIndicators.Add(new BouwdepotInvoiceValidator.Models.Enhanced.FraudIndicator // Use Enhanced model
                             {
-                                IndicatorName = indicatorName,
-                                Description = description,
+                                IndicatorName = indicatorName, // Property exists in Enhanced.FraudIndicator
+                                Description = description, // Property exists in Enhanced.FraudIndicator
                                 Evidence = evidence,
-                                Severity = severity,
-                                Category = (BouwdepotInvoiceValidator.Models.FraudIndicatorCategory)FraudIndicatorCategory.DocumentIssue
+                                Severity = severity, // Property exists in Enhanced.FraudIndicator
+                                Category = Models.Enhanced.FraudIndicatorCategory.DocumentManipulation // Specify namespace
                             });
                         }
                     }

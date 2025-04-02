@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
 
 namespace BouwdepotInvoiceValidator.Services.Vendors
 {

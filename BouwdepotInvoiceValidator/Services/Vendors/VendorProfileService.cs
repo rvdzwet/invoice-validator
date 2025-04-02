@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
 using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services.Vendors
@@ -543,18 +544,22 @@ namespace BouwdepotInvoiceValidator.Services.Vendors
                 return null;
             }
             
+            
+            
+            // Ensure VendorInsights class exists and has these properties
+            // Assuming VendorInsights has properties matching VendorProfile's structure
             var insights = new VendorInsights
             {
                 VendorName = profile.VendorName,
-                BusinessCategories = profile.BusinessCategories,
-                InvoiceCount = profile.InvoiceCount,
-                FirstSeen = profile.FirstSeen,
-                LastSeen = profile.LastSeen,
-                ReliabilityScore = profile.TrustMetrics.ReliabilityScore,
-                PriceStabilityScore = profile.TrustMetrics.PriceStabilityScore,
-                DocumentQualityScore = profile.TrustMetrics.DocumentQualityScore,
-                TotalAnomalyCount = profile.TrustMetrics.DetectedAnomalies.Count,
-                VendorSpecialties = profile.SpecialtyServices
+                BusinessCategories = profile.BusinessCategories, // Correct: Directly on VendorProfile
+                InvoiceCount = profile.InvoiceCount,             // Correct: Directly on VendorProfile
+                FirstSeen = profile.FirstSeen,                   // Correct: Directly on VendorProfile
+                LastSeen = profile.LastSeen,                     // Correct: Directly on VendorProfile
+                ReliabilityScore = profile.TrustMetrics.ReliabilityScore, // Access via TrustMetrics
+                PriceStabilityScore = profile.TrustMetrics.PriceStabilityScore, // Access via TrustMetrics
+                DocumentQualityScore = profile.TrustMetrics.DocumentQualityScore, // Access via TrustMetrics
+                TotalAnomalyCount = profile.TrustMetrics.DetectedAnomalies.Count, // Calculate from TrustMetrics list
+                VendorSpecialties = profile.SpecialtyServices // Correct: Use SpecialtyServices from VendorProfile
             };
             
             return insights;

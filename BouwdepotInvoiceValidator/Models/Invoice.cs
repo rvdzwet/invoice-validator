@@ -11,6 +11,7 @@ namespace BouwdepotInvoiceValidator.Models
     {
         public string InvoiceNumber { get; set; } = string.Empty;
         public DateTime? InvoiceDate { get; set; }
+        public DateTime? DueDate { get; set; } // Add DueDate property
         public decimal TotalAmount { get; set; }
         public decimal VatAmount { get; set; }
         public string Currency { get; set; } = "EUR";

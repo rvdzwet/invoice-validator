@@ -1,50 +1,18 @@
 using System;
 using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Drawing;
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Using statement already added
+// using BouwdepotInvoiceValidator.Models.Analysis; // Remove this using statement
 
 namespace BouwdepotInvoiceValidator.Models
 {
-    /// <summary>
-    /// Detailed summary of invoice content and purpose
-    /// </summary>
-    public class ContentSummary
-    {
-        /// <summary>
-        /// Summary of what was purchased
-        /// </summary>
-        public string PurchasedItems { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// What these items are likely used for
-        /// </summary>
-        public string IntendedPurpose { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// How this affects property value or improvement
-        /// </summary>
-        public string PropertyImpact { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Category of home improvement
-        /// </summary>
-        public string ProjectCategory { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Small repair, major renovation, etc.
-        /// </summary>
-        public string EstimatedProjectScope { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Whether this is likely part of a larger project
-        /// </summary>
-        public bool LikelyPartOfLargerProject { get; set; }
-        
-        /// <summary>
-        /// Initial, ongoing, finishing touches, etc.
-        /// </summary>
-        public string ProjectStage { get; set; } = string.Empty;
-    }
-    
+    // Removed duplicate ContentSummary class definition (exists in Enhanced)
+
     /// <summary>
     /// Information about what was purchased based on line item analysis
     /// </summary>
@@ -58,7 +26,7 @@ namespace BouwdepotInvoiceValidator.Models
     }
     
     /// <summary>
-    /// Detailed analysis of a single line item from an invoice
+    /// Detailed analysis of a single line item from an invoice (Restored definition)
     /// </summary>
     public class LineItemAnalysisDetail
     {
@@ -222,24 +190,24 @@ namespace BouwdepotInvoiceValidator.Models
         public List<string> MissingInvoiceElements { get; set; } = new List<string>();
         
         /// <summary>
-        /// Fraud detection results
+        /// Fraud detection results (Using Enhanced model)
         /// </summary>
-        public FraudDetection FraudDetection { get; set; } = new FraudDetection();
+        public BouwdepotInvoiceValidator.Models.Enhanced.FraudDetection FraudDetection { get; set; } = new BouwdepotInvoiceValidator.Models.Enhanced.FraudDetection();
         
         /// <summary>
-        /// Vendor insights from profiling
+        /// Vendor insights from profiling (Using Enhanced model)
         /// </summary>
         public VendorInsights VendorInsights { get; set; } = new VendorInsights();
         
         /// <summary>
-        /// Audit report for transparency
+        /// Audit report for transparency (Using Enhanced model)
         /// </summary>
-        public AuditReport AuditReport { get; set; } = new AuditReport();
+        public BouwdepotInvoiceValidator.Models.Enhanced.AuditReport AuditReport { get; set; } = new BouwdepotInvoiceValidator.Models.Enhanced.AuditReport();
         
         /// <summary>
-        /// Digital signature for verification
+        /// Digital signature for verification (Using Enhanced model)
         /// </summary>
-        public DigitalSignature Signature { get; set; } = new DigitalSignature();
+        public BouwdepotInvoiceValidator.Models.Enhanced.DigitalSignature Signature { get; set; } = new BouwdepotInvoiceValidator.Models.Enhanced.DigitalSignature();
         
         /// <summary>
         /// Purchase analysis information
@@ -255,6 +223,16 @@ namespace BouwdepotInvoiceValidator.Models
         /// Detailed reasoning from the AI model providing comprehensive explanation of all assessments
         /// </summary>
         public string DetailedReasoning { get; set; } = string.Empty;
+
+        /// <summary>
+        /// Summary of the invoice content and purpose. (Using Enhanced model)
+        /// </summary>
+        public BouwdepotInvoiceValidator.Models.Enhanced.ContentSummary Summary { get; set; } = new BouwdepotInvoiceValidator.Models.Enhanced.ContentSummary();
+
+        /// <summary>
+        /// Recommendation from the audit assessment (e.g., Approve, Reject, Review)
+        /// </summary>
+        public string AuditRecommendation { get; set; } = string.Empty;
         
         #region Backward Compatibility Properties
         
@@ -417,7 +395,7 @@ namespace BouwdepotInvoiceValidator.Models
     }
 
     /// <summary>
-    /// Assessment of a specific fraud indicator
+    /// Assessment of a specific fraud indicator (Restored definition)
     /// </summary>
     public class IndicatorAssessment
     {
@@ -444,210 +422,17 @@ namespace BouwdepotInvoiceValidator.Models
         public RectangleF? Location { get; set; }
     }
     
-    /// <summary>
-    /// Represents a factor that contributes to the confidence score
-    /// </summary>
-    public class ConfidenceFactor
-    {
-        /// <summary>
-        /// Name of the factor affecting confidence
-        /// </summary>
-        public string FactorName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Impact on confidence score (-10 to +10)
-        /// </summary>
-        public int Impact { get; set; }
-        
-        /// <summary>
-        /// Explanation of this factor's impact on the overall assessment
-        /// </summary>
-        public string Explanation { get; set; } = string.Empty;
-    }
+    // Removed duplicate ConfidenceFactor class definition (assuming it exists elsewhere or is not needed here)
     
-    /// <summary>
-    /// Fraud detection results for the invoice validation
-    /// </summary>
-    public class FraudDetection
-    {
-        /// <summary>
-        /// Overall fraud risk level (0-100)
-        /// </summary>
-        public int RiskLevel { get; set; }
-        
-        /// <summary>
-        /// Whether any fraud indicators were detected
-        /// </summary>
-        public bool FraudIndicatorsDetected { get; set; }
-        
-        /// <summary>
-        /// List of detected fraud indicators with details
-        /// </summary>
-        public List<FraudIndicator> DetectedIndicators { get; set; } = new List<FraudIndicator>();
-        
-        /// <summary>
-        /// Recommended action based on fraud assessment
-        /// </summary>
-        public string RecommendedAction { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Additional information about the fraud assessment
-        /// </summary>
-        public string Notes { get; set; } = string.Empty;
-    }
+    // Removed duplicate FraudDetection class definition (exists in Enhanced)
     
-    /// <summary>
-    /// A specific indicator of potential fraud in the invoice
-    /// </summary>
-    public class FraudIndicator
-    {
-        /// <summary>
-        /// Name of the fraud indicator
-        /// </summary>
-        public string Name { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Severity of this indicator (0-100)
-        /// </summary>
-        public int Severity { get; set; }
-        
-        /// <summary>
-        /// Evidence supporting this indicator
-        /// </summary>
-        public string Evidence { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Regulatory or policy reference
-        /// </summary>
-        public string Reference { get; set; } = string.Empty;
-    }
+    // Removed duplicate FraudIndicator class definition (exists in Enhanced)
     
-    /// <summary>
-    /// Insights about the vendor based on profiling
-    /// </summary>
-    public class VendorInsights
-    {
-        /// <summary>
-        /// Vendor name from the invoice
-        /// </summary>
-        public string VendorName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Whether this vendor is known from previous invoices
-        /// </summary>
-        public bool IsKnownVendor { get; set; }
-        
-        /// <summary>
-        /// Type of vendor (Contractor, Supplier, Service Provider, etc.)
-        /// </summary>
-        public string VendorType { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Primary business areas of this vendor
-        /// </summary>
-        public List<string> BusinessAreas { get; set; } = new List<string>();
-        
-        /// <summary>
-        /// Reputation assessment of this vendor
-        /// </summary>
-        public string ReputationAssessment { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Additional insights about the vendor
-        /// </summary>
-        public string Notes { get; set; } = string.Empty;
-    }
+    // Removed duplicate VendorInsights class definition (exists in Enhanced)
     
-    /// <summary>
-    /// Detailed audit report for the validation
-    /// </summary>
-    public class AuditReport
-    {
-        /// <summary>
-        /// Executive summary of the validation
-        /// </summary>
-        public string ExecutiveSummary { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// List of key observations from the validation
-        /// </summary>
-        public List<string> KeyObservations { get; set; } = new List<string>();
-        
-        /// <summary>
-        /// Factors supporting approval
-        /// </summary>
-        public List<string> ApprovalFactors { get; set; } = new List<string>();
-        
-        /// <summary>
-        /// Factors raising concerns
-        /// </summary>
-        public List<string> ConcernFactors { get; set; } = new List<string>();
-        
-        /// <summary>
-        /// Applicable regulations and policies
-        /// </summary>
-        public List<string> ApplicableRegulations { get; set; } = new List<string>();
-        
-        /// <summary>
-        /// Assessments of specific rules
-        /// </summary>
-        public List<RuleAssessment> RuleAssessments { get; set; } = new List<RuleAssessment>();
-    }
+    // Removed duplicate AuditReport class definition (exists in Enhanced)
     
-    /// <summary>
-    /// Assessment of a specific rule
-    /// </summary>
-    public class RuleAssessment
-    {
-        /// <summary>
-        /// Name of the rule
-        /// </summary>
-        public string RuleName { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Description of the rule
-        /// </summary>
-        public string Description { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Whether the rule was met
-        /// </summary>
-        public bool IsMet { get; set; }
-        
-        /// <summary>
-        /// Evidence supporting the assessment
-        /// </summary>
-        public string Evidence { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Impact of this rule on the overall validation
-        /// </summary>
-        public string Impact { get; set; } = string.Empty;
-    }
+    // Removed duplicate RuleAssessment class definition (exists in Enhanced)
     
-    /// <summary>
-    /// Digital signature for verification
-    /// </summary>
-    public class DigitalSignature
-    {
-        /// <summary>
-        /// Timestamp when the signature was created
-        /// </summary>
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        
-        /// <summary>
-        /// Algorithm used for the signature
-        /// </summary>
-        public string Algorithm { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Base64 encoded signature value
-        /// </summary>
-        public string Value { get; set; } = string.Empty;
-        
-        /// <summary>
-        /// Identifier for the public key used for verification
-        /// </summary>
-        public string KeyId { get; set; } = string.Empty;
-    }
+    // Removed duplicate DigitalSignature class definition (exists in Enhanced)
 }

@@ -308,11 +308,11 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 if (root.TryGetProperty("lineItems", out var lineItemsElement) && 
                     lineItemsElement.ValueKind == JsonValueKind.Array)
                 {
-                    invoice.LineItems ??= new List<LineItem>();
+                    invoice.LineItems ??= new List<InvoiceLineItem>(); // Use InvoiceLineItem
                     
                     foreach (var item in lineItemsElement.EnumerateArray())
                     {
-                        var lineItem = new LineItem();
+                        var lineItem = new InvoiceLineItem(); // Use InvoiceLineItem
                         
                         if (item.TryGetProperty("description", out var descElement) && 
                             descElement.ValueKind == JsonValueKind.String)
@@ -324,12 +324,14 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                         {
                             if (qtyElement.ValueKind == JsonValueKind.Number)
                             {
-                                lineItem.Quantity = qtyElement.GetDecimal();
+                                // Cast decimal to int for Quantity
+                                lineItem.Quantity = (int)qtyElement.GetDecimal(); 
                             }
                             else if (qtyElement.ValueKind == JsonValueKind.String &&
                                      decimal.TryParse(qtyElement.GetString(), out var qtyValue))
                             {
-                                lineItem.Quantity = qtyValue;
+                                // Cast decimal to int for Quantity
+                                lineItem.Quantity = (int)qtyValue; 
                             }
                         }
                         

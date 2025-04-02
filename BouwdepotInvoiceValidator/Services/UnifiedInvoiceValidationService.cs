@@ -4,6 +4,7 @@ using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
 
 namespace BouwdepotInvoiceValidator.Services
 {
@@ -233,13 +234,14 @@ namespace BouwdepotInvoiceValidator.Services
                 // Add detected indicators
                 foreach (var indicator in aiResponse.FraudIndicators)
                 {
-                    result.FraudDetection.DetectedIndicators.Add(new BouwdepotInvoiceValidator.Models.FraudIndicator
+                    // Use the FraudIndicator from the Enhanced namespace
+                    result.FraudDetection.DetectedIndicators.Add(new BouwdepotInvoiceValidator.Models.Enhanced.FraudIndicator 
                     {
-                        IndicatorName = indicator.IndicatorName,
-                        Description = indicator.Description,
+                        IndicatorName = indicator.IndicatorName, // Property exists in AI.FraudIndicator and Enhanced.FraudIndicator
+                        Description = indicator.Description, // Property exists in AI.FraudIndicator and Enhanced.FraudIndicator
                         Evidence = indicator.Evidence,
-                        Severity = indicator.Severity,
-                        Category = (BouwdepotInvoiceValidator.Models.FraudIndicatorCategory)indicator.Category
+                        Severity = indicator.Severity, // Property is double in both AI.FraudIndicator and Enhanced.FraudIndicator
+                        Category = (BouwdepotInvoiceValidator.Models.Enhanced.FraudIndicatorCategory)indicator.Category // Explicit cast needed
                     });
                 }
                 
