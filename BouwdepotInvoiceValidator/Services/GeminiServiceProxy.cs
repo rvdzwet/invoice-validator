@@ -18,7 +18,7 @@ namespace BouwdepotInvoiceValidator.Services
         private readonly Gemini.GeminiAdvancedAnalysisService _advancedAnalysisService;
         private readonly Gemini.GeminiLineItemAnalysisService _lineItemAnalysisService;
         private readonly Gemini.GeminiFraudDetectionService _fraudDetectionService;
-        private readonly Gemini.GeminiService _conversationService;
+        private readonly BouwdepotInvoiceValidator.Services.Gemini.GeminiService _geminiService;
         
         public GeminiServiceProxy(
             ILogger<GeminiServiceProxy> logger,
@@ -27,7 +27,7 @@ namespace BouwdepotInvoiceValidator.Services
             Gemini.GeminiAdvancedAnalysisService advancedAnalysisService,
             Gemini.GeminiLineItemAnalysisService lineItemAnalysisService,
             Gemini.GeminiFraudDetectionService fraudDetectionService,
-            Gemini.GeminiService conversationService)
+            BouwdepotInvoiceValidator.Services.Gemini.GeminiService geminiService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
@@ -35,7 +35,7 @@ namespace BouwdepotInvoiceValidator.Services
             _advancedAnalysisService = advancedAnalysisService ?? throw new ArgumentNullException(nameof(advancedAnalysisService));
             _lineItemAnalysisService = lineItemAnalysisService ?? throw new ArgumentNullException(nameof(lineItemAnalysisService));
             _fraudDetectionService = fraudDetectionService ?? throw new ArgumentNullException(nameof(fraudDetectionService));
-            _conversationService = conversationService ?? throw new ArgumentNullException(nameof(conversationService));
+            _geminiService = geminiService ?? throw new ArgumentNullException(nameof(geminiService));
             
             _logger.LogInformation("GeminiServiceProxy initialized with specialized service implementations");
         }
@@ -46,7 +46,7 @@ namespace BouwdepotInvoiceValidator.Services
         public string StartNewConversation(Dictionary<string, string> metadata = null)
         {
             _logger.LogInformation("Delegating start new conversation to GeminiService");
-            return _conversationService.StartNewConversation(metadata);
+            return _geminiService.StartNewConversation(metadata);
         }
         
         /// <summary>
@@ -55,7 +55,7 @@ namespace BouwdepotInvoiceValidator.Services
         public bool SwitchConversation(string conversationId)
         {
             _logger.LogInformation("Delegating switch conversation to GeminiService for ID: {ConversationId}", conversationId);
-            return _conversationService.SwitchConversation(conversationId);
+            return _geminiService.SwitchConversation(conversationId);
         }
         
         /// <summary>
@@ -64,7 +64,7 @@ namespace BouwdepotInvoiceValidator.Services
         public void ClearCurrentConversation()
         {
             _logger.LogInformation("Delegating clear current conversation to GeminiService");
-            _conversationService.ClearCurrentConversation();
+            _geminiService.ClearCurrentConversation();
         }
         
         /// <summary>
@@ -73,7 +73,7 @@ namespace BouwdepotInvoiceValidator.Services
         public ConversationContext GetCurrentConversation()
         {
             _logger.LogInformation("Delegating get current conversation to GeminiService");
-            return _conversationService.GetCurrentConversation();
+            return _geminiService.GetCurrentConversation();
         }
         
         /// <summary>
@@ -82,7 +82,7 @@ namespace BouwdepotInvoiceValidator.Services
         public async Task<string> GetConversationPromptAsync(string prompt, bool useHistory = true)
         {
             _logger.LogInformation("Delegating conversation prompt to GeminiService");
-            return await _conversationService.GetConversationPromptAsync(prompt, useHistory);
+            return await _geminiService.GetConversationPromptAsync(prompt, useHistory);
         }
         
         /// <summary>

@@ -13,6 +13,14 @@ This project has been enhanced with multi-modal validation and audit transparenc
 - Resolved type conversion issues between decimal and int values in line item processing
 - Fixed dependency injection error by removing direct registration of abstract `GeminiServiceBase` class
 
+### Dependency Injection Fixes (April 2025)
+
+- Fixed dependency injection issues with `GeminiServiceBase` and `GeminiModelProvider`
+- Properly registered `GeminiConversationService` as an implementation of `GeminiServiceBase`
+- Updated `GeminiServiceProxy` to use the correct `Gemini.GeminiService` implementation
+- Added explicit registration for `BouwdepotInvoiceValidator.Services.Gemini.GeminiService`
+- Implemented factory pattern for `GeminiModelProvider` to ensure proper dependency resolution
+
 ## New Features
 
 ### 1. Multi-Modal Validation

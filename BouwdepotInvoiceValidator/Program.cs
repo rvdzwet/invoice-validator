@@ -64,7 +64,13 @@ builder.Services.AddScoped<BouwdepotInvoiceValidator.Services.Gemini.GeminiLineI
 builder.Services.AddScoped<BouwdepotInvoiceValidator.Services.Gemini.GeminiAdvancedAnalysisService>();
 
 // Register the main service implementation
+builder.Services.AddScoped<BouwdepotInvoiceValidator.Services.Gemini.GeminiService>();
 builder.Services.AddScoped<IGeminiService, GeminiService>();
+
+// Register GeminiServiceBase using GeminiConversationService as the implementation
+// This is needed for GeminiModelProvider
+builder.Services.AddScoped<GeminiServiceBase>(sp => 
+    sp.GetRequiredService<BouwdepotInvoiceValidator.Services.Gemini.GeminiConversationService>());
 
 // Register legacy services for backward compatibility
 builder.Services.AddScoped<GeminiDocumentService>();
@@ -86,7 +92,11 @@ builder.Services.AddScoped<IVendorProfileService, VendorProfileService>();
 
 // Register AI model provider services
 builder.Services.AddSingleton<AIModelProviderFactory>();
-builder.Services.AddSingleton<GeminiModelProvider>();
+builder.Services.AddSingleton<GeminiModelProvider>(sp => 
+    new GeminiModelProvider(
+        sp.GetRequiredService<ILogger<GeminiModelProvider>>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetRequiredService<GeminiServiceBase>()));
 builder.Services.AddSingleton<ImageProcessingService>();
 // GeminiImageGenerator is now created within GeminiAIService with the proper logger
 builder.Services.AddScoped<IAIDecisionExplainer, AIDecisionExplainer>();
