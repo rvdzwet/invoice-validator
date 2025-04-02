@@ -389,6 +389,32 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             promptBuilder.AppendLine("   - Specific issues or concerns");
             promptBuilder.AppendLine("   - Recommendations for approval/rejection");
             
+            promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
+            promptBuilder.AppendLine("Respond with a JSON object in the following format:");
+            promptBuilder.AppendLine("{");
+            promptBuilder.AppendLine("  \"isValid\": true/false,");
+            promptBuilder.AppendLine("  \"auditJustification\": \"Detailed explanation of your assessment\",");
+            promptBuilder.AppendLine("  \"weightedScore\": 0-100,");
+            promptBuilder.AppendLine("  \"regulatoryNotes\": \"Any regulatory or compliance notes\",");
+            promptBuilder.AppendLine("  \"issues\": [");
+            promptBuilder.AppendLine("    {");
+            promptBuilder.AppendLine("      \"severity\": \"Error/Warning/Info\",");
+            promptBuilder.AppendLine("      \"message\": \"Description of the issue\"");
+            promptBuilder.AppendLine("    }");
+            promptBuilder.AppendLine("  ],");
+            promptBuilder.AppendLine("  \"criteriaAssessments\": [");
+            promptBuilder.AppendLine("    {");
+            promptBuilder.AppendLine("      \"criterionName\": \"Name of criterion\",");
+            promptBuilder.AppendLine("      \"weight\": 0-1,");
+            promptBuilder.AppendLine("      \"evidence\": \"Evidence supporting assessment\",");
+            promptBuilder.AppendLine("      \"score\": 0-100,");
+            promptBuilder.AppendLine("      \"confidence\": 0-1,");
+            promptBuilder.AppendLine("      \"reasoning\": \"Reasoning behind assessment\"");
+            promptBuilder.AppendLine("    }");
+            promptBuilder.AppendLine("  ],");
+            promptBuilder.AppendLine("  \"recommendations\": \"Specific recommendations for approval/rejection\"");
+            promptBuilder.AppendLine("}");
+            
             return promptBuilder.ToString();
         }
 
@@ -401,50 +427,175 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 // Set default values
                 result.IsValid = true;
                 
-                // Extract key sections using regex patterns
-                var validityMatch = Regex.Match(responseText, @"(?i)valid(?:ity)?:?\s*(yes|no|valid|invalid|true|false)");
-                if (validityMatch.Success)
+                // Try to extract JSON from the response
+                var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
+                if (jsonMatch.Success)
                 {
-                    var validityValue = validityMatch.Groups[1].Value.ToLower();
-                    result.IsValid = validityValue == "yes" || validityValue == "valid" || validityValue == "true";
-                }
-                
-                // Look for issues section
-                var issuesMatch = Regex.Match(responseText, @"(?i)(?:issues|concerns|problems):(.*?)(?:\n\n|\n#|\Z)", RegexOptions.Singleline);
-                if (issuesMatch.Success)
-                {
-                    var issuesText = issuesMatch.Groups[1].Value.Trim();
-                    var issueLines = issuesText.Split('\n');
+                    var jsonResponse = jsonMatch.Value;
+                    _logger.LogDebug("Extracted JSON from response: {JsonLength} characters", jsonResponse.Length);
                     
-                    foreach (var line in issueLines)
+                    try
                     {
-                        var trimmedLine = line.Trim();
-                        if (!string.IsNullOrEmpty(trimmedLine) && !trimmedLine.StartsWith("#"))
+                        // Use case-insensitive deserialization and allow trailing commas
+                        var options = new JsonSerializerOptions
                         {
-                            // Determine severity based on keywords
-                            var severity = ValidationSeverity.Warning;
-                            if (trimmedLine.Contains("critical") || trimmedLine.Contains("severe") || 
-                                trimmedLine.Contains("major") || trimmedLine.Contains("reject"))
+                            PropertyNameCaseInsensitive = true,
+                            AllowTrailingCommas = true,
+                            ReadCommentHandling = JsonCommentHandling.Skip
+                        };
+                        
+                        // Parse using JsonDocument for more flexibility
+                        using JsonDocument doc = JsonDocument.Parse(jsonResponse);
+                        var root = doc.RootElement;
+                        
+                        // Extract isValid
+                        if (root.TryGetProperty("isValid", out var isValidElement))
+                        {
+                            if (isValidElement.ValueKind == JsonValueKind.True || 
+                                isValidElement.ValueKind == JsonValueKind.False)
                             {
-                                severity = ValidationSeverity.Error;
+                                result.IsValid = isValidElement.GetBoolean();
                             }
-                            else if (trimmedLine.Contains("minor") || trimmedLine.Contains("suggestion") ||
-                                     trimmedLine.Contains("note"))
+                        }
+                        
+                        // Extract auditJustification
+                        if (root.TryGetProperty("auditJustification", out var justificationElement) && 
+                            justificationElement.ValueKind == JsonValueKind.String)
+                        {
+                            result.AuditJustification = justificationElement.GetString();
+                            _logger.LogDebug("Extracted audit justification: {Length} characters", 
+                                result.AuditJustification?.Length ?? 0);
+                        }
+                        
+                        // Extract weightedScore
+                        if (root.TryGetProperty("weightedScore", out var scoreElement) && 
+                            scoreElement.ValueKind == JsonValueKind.Number)
+                        {
+                            result.WeightedScore = (int)scoreElement.GetDouble();
+                            _logger.LogDebug("Extracted weighted score: {Score}", result.WeightedScore);
+                        }
+                        
+                        // Extract regulatoryNotes
+                        if (root.TryGetProperty("regulatoryNotes", out var notesElement) && 
+                            notesElement.ValueKind == JsonValueKind.String)
+                        {
+                            string notes = notesElement.GetString() ?? string.Empty;
+                            result.RegulatoryNotes = new List<string> { notes };
+                            _logger.LogDebug("Extracted regulatory notes: {Length} characters", 
+                                notes.Length);
+                        }
+                        
+                        // Extract issues
+                        if (root.TryGetProperty("issues", out var issuesElement) && 
+                            issuesElement.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var issue in issuesElement.EnumerateArray())
                             {
-                                severity = ValidationSeverity.Info;
+                                string message = string.Empty;
+                                ValidationSeverity severity = ValidationSeverity.Warning;
+                                
+                                if (issue.TryGetProperty("message", out var messageElement) && 
+                                    messageElement.ValueKind == JsonValueKind.String)
+                                {
+                                    message = messageElement.GetString() ?? string.Empty;
+                                }
+                                
+                                if (issue.TryGetProperty("severity", out var severityElement) && 
+                                    severityElement.ValueKind == JsonValueKind.String)
+                                {
+                                    string severityStr = severityElement.GetString()?.ToLower() ?? "warning";
+                                    
+                                    if (severityStr == "error")
+                                    {
+                                        severity = ValidationSeverity.Error;
+                                    }
+                                    else if (severityStr == "info")
+                                    {
+                                        severity = ValidationSeverity.Info;
+                                    }
+                                }
+                                
+                                if (!string.IsNullOrEmpty(message))
+                                {
+                                    result.AddIssue(severity, message);
+                                }
+                            }
+                        }
+                        
+                        // Extract criteriaAssessments
+                        if (root.TryGetProperty("criteriaAssessments", out var criteriaElement) && 
+                            criteriaElement.ValueKind == JsonValueKind.Array)
+                        {
+                            result.CriteriaAssessments = new List<CriterionAssessment>();
+                            
+                            foreach (var criterion in criteriaElement.EnumerateArray())
+                            {
+                                var assessment = new CriterionAssessment();
+                                
+                                if (criterion.TryGetProperty("criterionName", out var nameElement) && 
+                                    nameElement.ValueKind == JsonValueKind.String)
+                                {
+                                    assessment.CriterionName = nameElement.GetString() ?? string.Empty;
+                                }
+                                
+                                if (criterion.TryGetProperty("weight", out var weightElement) && 
+                                    weightElement.ValueKind == JsonValueKind.Number)
+                                {
+                                    assessment.Weight = Convert.ToDecimal(weightElement.GetDouble());
+                                }
+                                
+                                if (criterion.TryGetProperty("evidence", out var evidenceElement) && 
+                                    evidenceElement.ValueKind == JsonValueKind.String)
+                                {
+                                    assessment.Evidence = evidenceElement.GetString() ?? string.Empty;
+                                }
+                                
+                                if (criterion.TryGetProperty("score", out var criterionScoreElement) && 
+                                    criterionScoreElement.ValueKind == JsonValueKind.Number)
+                                {
+                                    assessment.Score = (int)criterionScoreElement.GetDouble();
+                                }
+                                
+                                if (criterion.TryGetProperty("confidence", out var confidenceElement) && 
+                                    confidenceElement.ValueKind == JsonValueKind.Number)
+                                {
+                                    assessment.Confidence = (int)confidenceElement.GetDouble();
+                                }
+                                
+                                if (criterion.TryGetProperty("reasoning", out var reasoningElement) && 
+                                    reasoningElement.ValueKind == JsonValueKind.String)
+                                {
+                                    assessment.Reasoning = reasoningElement.GetString() ?? string.Empty;
+                                }
+                                
+                                result.CriteriaAssessments.Add(assessment);
                             }
                             
-                            result.AddIssue(severity, trimmedLine);
+                            _logger.LogDebug("Extracted {Count} criteria assessments", 
+                                result.CriteriaAssessments.Count);
+                        }
+                        
+                        // Extract recommendations
+                        if (root.TryGetProperty("recommendations", out var recommendationsElement) && 
+                            recommendationsElement.ValueKind == JsonValueKind.String)
+                        {
+                            result.AuditRecommendation = recommendationsElement.GetString();
+                            _logger.LogDebug("Extracted audit recommendation: {Length} characters", 
+                                result.AuditRecommendation?.Length ?? 0);
                         }
                     }
+                    catch (JsonException jsonEx)
+                    {
+                        _logger.LogError(jsonEx, "Error parsing JSON from audit assessment response");
+                        // Fall back to regex-based parsing
+                        FallbackToRegexParsing(responseText, result);
+                    }
                 }
-                
-                // Look for recommendations section
-                var recommendationsMatch = Regex.Match(responseText, @"(?i)(?:recommendations?|conclusion):(.*?)(?:\n\n|\n#|\Z)", RegexOptions.Singleline);
-                if (recommendationsMatch.Success)
+                else
                 {
-                    var recommendationsText = recommendationsMatch.Groups[1].Value.Trim();
-                    result.AuditRecommendation = recommendationsText;
+                    _logger.LogWarning("Could not extract JSON from response, falling back to regex parsing");
+                    // Fall back to regex-based parsing
+                    FallbackToRegexParsing(responseText, result);
                 }
                 
                 // If no issues were found but the result is invalid, add a generic issue
@@ -463,6 +614,82 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 result.IsValid = false;
                 result.AddIssue(ValidationSeverity.Error, 
                     $"Error processing audit assessment: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// Fallback method to parse the response using regex when JSON parsing fails
+        /// </summary>
+        private void FallbackToRegexParsing(string responseText, ValidationResult result)
+        {
+            _logger.LogInformation("Using regex fallback parsing for audit assessment");
+            
+            // Extract validity
+            var validityMatch = Regex.Match(responseText, @"(?i)valid(?:ity)?:?\s*(yes|no|valid|invalid|true|false)");
+            if (validityMatch.Success)
+            {
+                var validityValue = validityMatch.Groups[1].Value.ToLower();
+                result.IsValid = validityValue == "yes" || validityValue == "valid" || validityValue == "true";
+            }
+            
+            // Extract audit justification
+            var justificationMatch = Regex.Match(responseText, @"(?i)(?:justification|assessment|analysis):(.*?)(?:\n\n|\n#|\Z)", RegexOptions.Singleline);
+            if (justificationMatch.Success)
+            {
+                result.AuditJustification = justificationMatch.Groups[1].Value.Trim();
+            }
+            
+            // Extract weighted score
+            var scoreMatch = Regex.Match(responseText, @"(?i)(?:score|rating):\s*(\d+)");
+            if (scoreMatch.Success && double.TryParse(scoreMatch.Groups[1].Value, out double score))
+            {
+                result.WeightedScore = (int)score;
+            }
+            
+            // Extract regulatory notes
+            var notesMatch = Regex.Match(responseText, @"(?i)(?:regulatory|compliance|legal)(?:\s+notes?|requirements?|considerations?):(.*?)(?:\n\n|\n#|\Z)", RegexOptions.Singleline);
+            if (notesMatch.Success)
+            {
+                string notes = notesMatch.Groups[1].Value.Trim();
+                result.RegulatoryNotes = new List<string> { notes };
+            }
+            
+            // Look for issues section
+            var issuesMatch = Regex.Match(responseText, @"(?i)(?:issues|concerns|problems):(.*?)(?:\n\n|\n#|\Z)", RegexOptions.Singleline);
+            if (issuesMatch.Success)
+            {
+                var issuesText = issuesMatch.Groups[1].Value.Trim();
+                var issueLines = issuesText.Split('\n');
+                
+                foreach (var line in issueLines)
+                {
+                    var trimmedLine = line.Trim();
+                    if (!string.IsNullOrEmpty(trimmedLine) && !trimmedLine.StartsWith("#"))
+                    {
+                        // Determine severity based on keywords
+                        var severity = ValidationSeverity.Warning;
+                        if (trimmedLine.Contains("critical") || trimmedLine.Contains("severe") || 
+                            trimmedLine.Contains("major") || trimmedLine.Contains("reject"))
+                        {
+                            severity = ValidationSeverity.Error;
+                        }
+                        else if (trimmedLine.Contains("minor") || trimmedLine.Contains("suggestion") ||
+                                 trimmedLine.Contains("note"))
+                        {
+                            severity = ValidationSeverity.Info;
+                        }
+                        
+                        result.AddIssue(severity, trimmedLine);
+                    }
+                }
+            }
+            
+            // Look for recommendations section
+            var recommendationsMatch = Regex.Match(responseText, @"(?i)(?:recommendations?|conclusion):(.*?)(?:\n\n|\n#|\Z)", RegexOptions.Singleline);
+            if (recommendationsMatch.Success)
+            {
+                var recommendationsText = recommendationsMatch.Groups[1].Value.Trim();
+                result.AuditRecommendation = recommendationsText;
             }
         }
         

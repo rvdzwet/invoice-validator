@@ -12,6 +12,8 @@ This project has been enhanced with multi-modal validation and audit transparenc
 - Fixed property mapping in `GeminiAdvancedAnalysisService` to match the `Invoice` and `PaymentDetails` models
 - Resolved type conversion issues between decimal and int values in line item processing
 - Fixed dependency injection error by removing direct registration of abstract `GeminiServiceBase` class
+- Enhanced `GeminiLineItemAnalysisService` to properly populate audit report fields
+- Improved JSON parsing in `ParseAuditAssessmentResponse` with proper type conversions and fallback mechanism
 
 ### Dependency Injection Fixes (April 2025)
 
