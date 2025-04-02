@@ -53,8 +53,7 @@ builder.Services.AddScoped<IPdfExtractionService, PdfExtractionService>();
 builder.Services.AddScoped<IAIService, GeminiAIService>();
 builder.Services.AddSingleton<ILoggerFactory, LoggerFactory>();
 
-// Register base services
-builder.Services.AddSingleton<GeminiServiceBase>();
+// GeminiServiceBase is abstract and cannot be registered directly
 
 // Register Gemini specialized services in the proper order
 builder.Services.AddScoped<BouwdepotInvoiceValidator.Services.Gemini.GeminiConversationService>();

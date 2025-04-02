@@ -11,6 +11,7 @@ This project has been enhanced with multi-modal validation and audit transparenc
 - Added missing `ExtractInvoiceDataFromImagesAsync` method to `GeminiAdvancedAnalysisService`
 - Fixed property mapping in `GeminiAdvancedAnalysisService` to match the `Invoice` and `PaymentDetails` models
 - Resolved type conversion issues between decimal and int values in line item processing
+- Fixed dependency injection error by removing direct registration of abstract `GeminiServiceBase` class
 
 ## New Features
 
