@@ -23,6 +23,7 @@ export default defineConfig(({ command, mode }) => {
     build: {
       // Production build settings
       outDir: '../BouwdepotInvoiceValidator/wwwroot', // Output to .NET project's wwwroot
+      emptyOutDir: true, // Ensure the output directory is emptied before build
       sourcemap: !isProd,
       minify: isProd ? 'esbuild' : false,
       target: 'es2018',
