@@ -8,6 +8,8 @@ obj/
 *.dll
 *.exe
 *.pdb
+publish/
+logs/
 
 # Node.js / React
 node_modules/

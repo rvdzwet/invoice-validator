@@ -12,6 +12,9 @@
     <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.3.0" />
     <PackageReference Include="PdfiumSharp" Version="1.4660.0-alpha1" />
     <PackageReference Include="Polly" Version="8.3.0" />
+    <PackageReference Include="Serilog.AspNetCore" Version="8.0.1" /> <!-- Added Serilog -->
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" /> <!-- Added File Sink -->
+    <PackageReference Include="Serilog.Settings.Configuration" Version="8.0.0" /> <!-- Added Configuration Support -->
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.0" />
   </ItemGroup>

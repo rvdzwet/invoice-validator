@@ -4,10 +4,27 @@ using BouwdepotInvoiceValidator.Services.AI;
 using BouwdepotInvoiceValidator.Services.Security;
 using BouwdepotInvoiceValidator.Services.Vendors;
 using Microsoft.OpenApi.Models;
+using Serilog; // Added for Serilog
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(args); // Moved builder creation up
 
-// Add services to the container.
+// Configure Serilog logger first using the created builder
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration) // Read configuration from appsettings.json
+    .Enrich.FromLogContext()
+    .CreateBootstrapLogger(); // Use bootstrap logger until host is built
+
+try
+{
+    Log.Information("Starting web application");
+
+    // Configure Serilog for the host
+    builder.Host.UseSerilog((context, services, configuration) => configuration
+        .ReadFrom.Configuration(context.Configuration) // Read full config once host is built
+        .ReadFrom.Services(services)
+        .Enrich.FromLogContext());
+
+    // Add services to the container.
 // Add API controllers
 builder.Services.AddControllers();
 
@@ -123,7 +140,16 @@ app.UseStaticFiles();
 // Map API controllers first
 app.MapControllers();
 
-// Fallback to index.html for client-side routing
-app.MapFallbackToFile("index.html");
+    // Fallback to index.html for client-side routing
+    app.MapFallbackToFile("index.html");
 
-app.Run();
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush(); // Ensure all logs are flushed on shutdown
+}
