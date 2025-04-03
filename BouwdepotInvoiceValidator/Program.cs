@@ -1,4 +1,3 @@
-using BouwdepotInvoiceValidator.Components;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services;
 using BouwdepotInvoiceValidator.Services.AI;
@@ -9,23 +8,12 @@ using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
 // Add API controllers
 builder.Services.AddControllers();
 
 // Configure CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp", policy =>
-    {
-        policy.WithOrigins("http://localhost:3000", "http://localhost:5173")
-              .AllowAnyMethod()
-              .AllowAnyHeader()
-              .AllowCredentials();
-    });
-    
     options.AddPolicy("AllowAll", policy =>
     {
         policy.AllowAnyOrigin()
@@ -100,9 +88,6 @@ builder.Services.AddScoped<IAIDecisionExplainer, AIDecisionExplainer>();
 // Use the unified validation service
 builder.Services.AddScoped<IInvoiceValidationService, UnifiedInvoiceValidationService>();
 
-// Enable JavaScript interop for file inputs and other interactive components
-builder.Services.AddServerSideBlazor();
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -112,12 +97,14 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
     app.UseHttpsRedirection();
-    app.UseCors("AllowReactApp");
+    // CORS is needed if the API is consumed by other origins, 
+    // but not strictly required when serving the React app from the same origin.
+    // Keep AllowAll for development flexibility.
 }
 else
 {
     // In development, use the more permissive CORS policy
-    app.UseCors("AllowAll");
+    app.UseCors("AllowAll"); 
 }
 
 // Configure Swagger
@@ -127,13 +114,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Bouwdepot Invoice Validator API v1"));
 }
 
-app.UseAntiforgery();
+// Serve static files from wwwroot (where the React app is built)
+app.UseStaticFiles(); 
 
-app.MapStaticAssets();
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+// Removed Antiforgery as it's typically used with Razor Pages/MVC forms, not SPA APIs
+// app.UseAntiforgery(); 
 
-// Map API controllers
+// Map API controllers first
 app.MapControllers();
+
+// Fallback to index.html for client-side routing
+app.MapFallbackToFile("index.html");
 
 app.Run();

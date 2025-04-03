@@ -22,7 +22,7 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       // Production build settings
-      outDir: 'dist',
+      outDir: '../BouwdepotInvoiceValidator/wwwroot', // Output to .NET project's wwwroot
       sourcemap: !isProd,
       minify: isProd ? 'esbuild' : false,
       target: 'es2018',

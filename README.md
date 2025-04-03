@@ -2,6 +2,39 @@
 
 This project has been enhanced with multi-modal validation and audit transparency features to make the invoice validation process more robust and transparent.
 
+## Getting Started
+
+### Prerequisites
+
+- .NET SDK (version specified in `global.json` or latest)
+- Node.js and npm (latest LTS recommended)
+
+### Running in Development
+
+1.  Open a PowerShell terminal in the root directory of the project.
+2.  Run the script:
+    ```powershell
+    ./run-app.ps1
+    ```
+3.  This will start the .NET backend API, which now also serves the React frontend.
+4.  Access the application at `https://localhost:7051` (or the port specified in `launchSettings.json`).
+5.  The API Swagger documentation is available at `https://localhost:7051/swagger`.
+
+### Building for Production
+
+1.  Open a PowerShell terminal in the root directory of the project.
+2.  Run the script with the `-BuildProduction` flag:
+    ```powershell
+    ./run-app.ps1 -BuildProduction
+    ```
+3.  This script will:
+    - Install frontend dependencies (`npm install` in `BouwdepotInvoiceValidator.Client` if needed).
+    - Build the React frontend for production (`npm run build:prod`) and output the static files to `BouwdepotInvoiceValidator/wwwroot`.
+    - Build the .NET backend in Release configuration (`dotnet build -c Release`).
+4.  The production-ready backend build will be in `BouwdepotInvoiceValidator/bin/Release/netX.Y` (where X.Y is the target framework version).
+5.  The frontend static files will be in `BouwdepotInvoiceValidator/wwwroot`.
+6.  To deploy, you would typically publish the `BouwdepotInvoiceValidator` project (`dotnet publish -c Release`) which includes the backend and the static frontend files in `wwwroot`.
+
 ## Recent Updates
 
 ### Build Fixes (April 2025)

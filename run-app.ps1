@@ -94,14 +94,14 @@ function Build-ProductionRelease {
         exit 1
     }
     
-    # Check if dist directory was created
-    $distPath = Join-Path $frontendPath "dist"
-    if (-not (Test-Path $distPath)) {
-        Write-Host "Frontend build failed - dist directory not created" -ForegroundColor Red
+    # Check if wwwroot directory was created in the backend project
+    $wwwrootPath = Join-Path $backendPath "wwwroot"
+    if (-not (Test-Path $wwwrootPath)) {
+        Write-Host "Frontend build failed - wwwroot directory not created in $backendPath" -ForegroundColor Red
         exit 1
     }
     
-    Write-Host "Frontend production build completed successfully" -ForegroundColor Green
+    Write-Host "Frontend production build completed successfully into $wwwrootPath" -ForegroundColor Green
     
     # Build backend
     Write-Host "Building backend for production..." -ForegroundColor Yellow
@@ -122,7 +122,7 @@ function Build-ProductionRelease {
     
     Write-Host ""
     Write-Host "Production release build completed!" -ForegroundColor Green
-    Write-Host "Frontend bundle location: $distPath" -ForegroundColor Yellow
+    Write-Host "Frontend bundle location: $wwwrootPath" -ForegroundColor Yellow
     Write-Host "Backend release build complete" -ForegroundColor Yellow
 }
 
@@ -140,18 +140,18 @@ function Main {
     } else {
         # Run development servers
         Write-Host "Starting both backend and frontend applications..." -ForegroundColor Yellow
-        Write-Host "Press Ctrl+C in the terminal windows to stop each application" -ForegroundColor Yellow
+        Write-Host "Starting the backend application which now serves the frontend..." -ForegroundColor Yellow
+        Write-Host "Press Ctrl+C in the terminal window to stop the application" -ForegroundColor Yellow
         
-        # Start backend and frontend
+        # Start backend (which now serves frontend)
         Start-Backend
-        Start-Frontend
+        # Start-Frontend # No longer needed as backend serves the frontend
         
         Write-Host ""
-        Write-Host "Both applications are now running." -ForegroundColor Green
-        Write-Host "- Backend API: https://localhost:7051" -ForegroundColor Yellow
-        Write-Host "- Frontend:    http://localhost:3000" -ForegroundColor Yellow
+        Write-Host "Application is now running." -ForegroundColor Green
+        Write-Host "- Access at: https://localhost:7051" -ForegroundColor Yellow
         Write-Host ""
-        Write-Host "To stop the applications, close the opened terminal windows." -ForegroundColor Yellow
+        Write-Host "To stop the application, close the opened terminal window." -ForegroundColor Yellow
     }
 }
 
