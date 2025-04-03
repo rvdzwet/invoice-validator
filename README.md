@@ -20,20 +20,18 @@ This project has been enhanced with multi-modal validation and audit transparenc
 4.  Access the application at `https://localhost:7051` (or the port specified in `launchSettings.json`).
 5.  The API Swagger documentation is available at `https://localhost:7051/swagger`.
 
-### Building for Production
+### Publishing for Deployment
 
 1.  Open a PowerShell terminal in the root directory of the project.
-2.  Run the script with the `-BuildProduction` flag:
+2.  Run the publish script:
     ```powershell
-    ./run-app.ps1 -BuildProduction
+    ./publish-app.ps1
     ```
-3.  This script will:
+3.  This script will perform the following steps:
     - Install frontend dependencies (`npm install` in `BouwdepotInvoiceValidator.Client` if needed).
-    - Build the React frontend for production (`npm run build:prod`) and output the static files to `BouwdepotInvoiceValidator/wwwroot`.
-    - Build the .NET backend in Release configuration (`dotnet build -c Release`).
-4.  The production-ready backend build will be in `BouwdepotInvoiceValidator/bin/Release/netX.Y` (where X.Y is the target framework version).
-5.  The frontend static files will be in `BouwdepotInvoiceValidator/wwwroot`.
-6.  To deploy, you would typically publish the `BouwdepotInvoiceValidator` project (`dotnet publish -c Release`) which includes the backend and the static frontend files in `wwwroot`.
+    - Build the React frontend for production (`npm run build:prod`), placing the static files into `BouwdepotInvoiceValidator/wwwroot`.
+    - Publish the .NET backend application (`dotnet publish -c Release`), including the frontend files from `wwwroot`, into the `./publish` directory.
+4.  The `./publish` directory will contain the complete application package ready for deployment to a hosting environment (e.g., IIS, Azure App Service).
 
 ## Recent Updates
 
