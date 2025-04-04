@@ -62,6 +62,15 @@ This project has been enhanced with multi-modal validation and audit transparenc
 - Fixed lifetime scope issue by changing `AIModelProviderFactory` and `GeminiModelProvider` from singleton to scoped services
 - Removed caching of model provider in `UnifiedInvoiceValidationService` to prevent scoped service resolution from root provider
 
+### Prompt Refactoring (April 2025)
+
+- Split the large Gemini prompt for invoice data extraction (`BuildInvoiceDataExtractionPrompt`) into three smaller, more focused prompts:
+    - `BuildInvoiceHeaderPrompt`: Extracts invoice number, dates, amounts, currency.
+    - `BuildInvoicePartiesPrompt`: Extracts vendor and customer details.
+    - `BuildInvoiceLineItemsPrompt`: Extracts line items, payment terms, notes.
+- Updated `ExtractInvoiceDataFromImagesAsync` to use these new prompts and corresponding parsing methods (`ParseInvoiceHeaderResponse`, `ParseInvoicePartiesResponse`, `ParseInvoiceLineItemsResponse`).
+- Improved the `BuildDocumentTypePrompt` to include more context (vendor name, total amount) for better document classification.
+
 ## New Features
 
 ### 1. Multi-Modal Validation
