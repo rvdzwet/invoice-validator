@@ -4,7 +4,8 @@ using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
+using BouwdepotInvoiceValidator.Models.Enhanced;
+using BouwdepotInvoiceValidator.Services.Gemini;
 
 namespace BouwdepotInvoiceValidator.Services
 {
@@ -18,17 +19,20 @@ namespace BouwdepotInvoiceValidator.Services
         private readonly AIModelProviderFactory _modelProviderFactory;
         private readonly IPdfExtractionService _pdfExtractionService;
         private readonly IConfiguration _configuration;
+        private readonly GeminiDocumentAnalysisService _documentAnalysisService;
         
         public UnifiedInvoiceValidationService(
             ILogger<UnifiedInvoiceValidationService> logger,
             AIModelProviderFactory modelProviderFactory,
             IPdfExtractionService pdfExtractionService,
+            GeminiDocumentAnalysisService documentAnalysisService,
             IConfiguration configuration)
         {
-            _logger = logger;
-            _modelProviderFactory = modelProviderFactory;
-            _pdfExtractionService = pdfExtractionService;
-            _configuration = configuration;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _modelProviderFactory = modelProviderFactory ?? throw new ArgumentNullException(nameof(modelProviderFactory));
+            _pdfExtractionService = pdfExtractionService ?? throw new ArgumentNullException(nameof(pdfExtractionService));
+            _documentAnalysisService = documentAnalysisService ?? throw new ArgumentNullException(nameof(documentAnalysisService));
+            _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         }
         
         /// <summary>
@@ -76,7 +80,24 @@ namespace BouwdepotInvoiceValidator.Services
                     invoice.PageImages = await _pdfExtractionService.ExtractPageImagesAsync(fileStream);
                 }
                 
-                // Step 4: Prepare validation options
+                // Step 4: Verify document type using Gemini Document Analysis
+                _logger.LogInformation("Verifying document type using Gemini Document Analysis");
+                var documentTypeResult = await _documentAnalysisService.VerifyDocumentTypeAsync(invoice);
+                
+                // If the document is not an invoice, return early with the validation result
+                if (documentTypeResult.IsVerifiedInvoice == false)
+                {
+                    _logger.LogWarning("Document is not an invoice. Detected as: {DocumentType}", 
+                        documentTypeResult.DetectedDocumentType);
+                    
+                    // Return the validation result from document type verification
+                    return documentTypeResult;
+                }
+                
+                _logger.LogInformation("Document verified as an invoice with confidence: {Confidence:P0}", 
+                    documentTypeResult.DocumentVerificationConfidence);
+                
+                // Step 5: Prepare validation options
                 var options = new ValidationOptions
                 {
                     LanguageCode = _configuration.GetValue<string>("Validation:LanguageCode", "nl-NL"),

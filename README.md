@@ -41,6 +41,15 @@ This project has been enhanced with multi-modal validation and audit transparenc
 
 ## Recent Updates
 
+### Document Analysis Enhancements (April 2025)
+
+- **Document Type Verification First**: Modified the validation process to start with document type verification before proceeding with detailed analysis
+- Added `GeminiDocumentAnalysisService` with specialized document classification capabilities
+- Implemented early rejection of non-invoice documents to improve processing efficiency
+- Enhanced document type verification with confidence scoring and detailed explanation
+- Added support for both text-based and image-based document classification
+- Improved error handling and logging for document type verification
+
 ### Build Fixes (April 2025)
 
 - Fixed service dependency issues in `GeminiServiceProxy` to properly reference the correct Gemini services

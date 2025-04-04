@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using System.Text;
 
 namespace BouwdepotInvoiceValidator.Services.Gemini
 {
@@ -22,52 +23,75 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
         /// <summary>
         /// Uses Gemini AI to extract invoice data from the PDF images
         /// </summary>
-        /// <param name="invoice">The invoice with page images</param>
-        /// <returns>The invoice with extracted data from the images</returns>
+        /// <param name="invoice">The invoice object, potentially containing page images.</param>
+        /// <returns>The invoice object, populated with extracted data if identified as an invoice.</returns>
         public async Task<Invoice> ExtractInvoiceDataFromImagesAsync(Invoice invoice)
         {
-            _logger.LogInformation("Extracting invoice data from images using Gemini AI");
-            
+            _logger.LogInformation("Starting invoice data extraction process using Gemini AI for file: {FileName}", invoice.FileName ?? "N/A");
+
             try
             {
                 // Make sure we have page images
                 if (invoice.PageImages == null || invoice.PageImages.Count == 0)
                 {
-                    _logger.LogWarning("Invoice data extraction failed: No page images available");
+                    _logger.LogWarning("Invoice data extraction failed: No page images available for file: {FileName}", invoice.FileName ?? "N/A");
                     return invoice;
                 }
-                
-                // Extract Header Data
-                _logger.LogDebug("Extracting invoice header data...");
+
+                // Step 1: Verify Document Type from Images
+                _logger.LogDebug("Step 1: Verifying document type from images...");
+                var docTypePrompt = BuildDocumentTypeVerificationPromptForImages();
+                var docTypeResponseText = await CallGeminiApiAsync(docTypePrompt, invoice.PageImages, "DocumentTypeVerificationFromImages");
+                var docTypeResult = ParseDocumentTypeVerificationResponse(docTypeResponseText);
+
+                _logger.LogInformation("Document type verification result: IsInvoice={IsInvoice}, Type={DetectedType}, Confidence={Confidence:P1}",
+                                       docTypeResult.IsInvoice, docTypeResult.DetectedDocumentType, docTypeResult.Confidence);
+
+                // Store verification result in the invoice object (assuming properties exist or adding them)
+                // Consider adding these properties to the Invoice model if needed for downstream use:
+                // invoice.IsVerifiedAsInvoiceByImage = docTypeResult.IsInvoice;
+                // invoice.DetectedDocumentTypeByImage = docTypeResult.DetectedDocumentType;
+                // invoice.VerificationConfidenceByImage = docTypeResult.Confidence;
+
+                if (!docTypeResult.IsInvoice)
+                {
+                    _logger.LogWarning("Document identified as '{DetectedType}' (Confidence: {Confidence:P1}), not an invoice. Skipping data extraction for file: {FileName}",
+                                       docTypeResult.DetectedDocumentType, docTypeResult.Confidence, invoice.FileName ?? "N/A");
+                    return invoice; // Stop processing if not an invoice
+                }
+
+                _logger.LogDebug("Document confirmed as Invoice. Proceeding with data extraction.");
+
+                // Step 2: Extract Header Data (if confirmed as invoice)
+                _logger.LogDebug("Step 2: Extracting invoice header data...");
                 var headerPrompt = BuildInvoiceHeaderPrompt();
                 var headerResponse = await CallGeminiApiAsync(headerPrompt, invoice.PageImages, "InvoiceHeaderExtraction");
                 ParseInvoiceHeaderResponse(headerResponse, invoice);
                 _logger.LogDebug("Invoice header data extracted.");
 
-                // Extract Parties Data
-                _logger.LogDebug("Extracting invoice parties data...");
+                // Step 3: Extract Parties Data
+                _logger.LogDebug("Step 3: Extracting invoice parties data...");
                 var partiesPrompt = BuildInvoicePartiesPrompt();
                 var partiesResponse = await CallGeminiApiAsync(partiesPrompt, invoice.PageImages, "InvoicePartiesExtraction");
                 ParseInvoicePartiesResponse(partiesResponse, invoice);
-                 _logger.LogDebug("Invoice parties data extracted.");
+                _logger.LogDebug("Invoice parties data extracted.");
 
-                // Extract Line Items Data
-                _logger.LogDebug("Extracting invoice line items data...");
+                // Step 4: Extract Line Items Data
+                _logger.LogDebug("Step 4: Extracting invoice line items data...");
                 var lineItemsPrompt = BuildInvoiceLineItemsPrompt();
                 var lineItemsResponse = await CallGeminiApiAsync(lineItemsPrompt, invoice.PageImages, "InvoiceLineItemsExtraction");
                 ParseInvoiceLineItemsResponse(lineItemsResponse, invoice);
                 _logger.LogDebug("Invoice line items data extracted.");
 
-                _logger.LogInformation("Successfully extracted and merged invoice data using Gemini AI: " +
-                                      "InvoiceNumber={InvoiceNumber}, InvoiceDate={InvoiceDate}, TotalAmount={TotalAmount}, Vendor={VendorName}, LineItems={LineItemCount}", 
-                                      invoice.InvoiceNumber, invoice.InvoiceDate, invoice.TotalAmount, invoice.VendorName, invoice.LineItems?.Count ?? 0);
-                
+                _logger.LogInformation("Successfully extracted and merged invoice data using Gemini AI for file: {FileName}. " +
+                                       "InvoiceNumber={InvoiceNumber}, InvoiceDate={InvoiceDate}, TotalAmount={TotalAmount}, Vendor={VendorName}, LineItems={LineItemCount}",
+                                       invoice.FileName ?? "N/A", invoice.InvoiceNumber, invoice.InvoiceDate, invoice.TotalAmount, invoice.VendorName, invoice.LineItems?.Count ?? 0);
+
                 return invoice;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error extracting invoice data from images with Gemini");
-                // Return the original invoice without modifications in case of error
+                _logger.LogError(ex, "Error extracting invoice data from images with Gemini for file: {FileName}", invoice.FileName ?? "N/A");
                 return invoice;
             }
         }
@@ -134,11 +158,36 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         #region Helper Methods
 
-        // Removed BuildInvoiceDataExtractionPrompt as it's replaced by the three specific prompts below
+        private string BuildDocumentTypeVerificationPromptForImages()
+        {
+            var promptBuilder = new StringBuilder();
+
+            promptBuilder.AppendLine("### DOCUMENT TYPE ANALYSIS FROM IMAGES ###");
+            promptBuilder.AppendLine("You are an expert document analyst specializing in identifying and classifying documents from images.");
+            promptBuilder.AppendLine("Your primary task is to determine if the provided images represent a valid invoice.");
+            promptBuilder.AppendLine("If it is an invoice, confirm this. If it's not an invoice, classify the document type (e.g., Quote, Receipt, Order Confirmation, Letter, etc.).");
+
+            promptBuilder.AppendLine("\n### ANALYSIS INSTRUCTIONS ###");
+            promptBuilder.AppendLine("1. Carefully examine the layout, structure, and content visible in the images.");
+            promptBuilder.AppendLine("2. Look for common invoice elements like 'Invoice Number', 'Invoice Date', 'Due Date', 'Total Amount', vendor/customer details, and line items.");
+            promptBuilder.AppendLine("3. Based on your analysis, determine if the document is an invoice.");
+            promptBuilder.AppendLine("4. If it's not an invoice, state the most likely document type.");
+            promptBuilder.AppendLine("5. Provide a confidence score (0.0-1.0) for your classification.");
+
+            promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
+            promptBuilder.AppendLine("Respond ONLY with a JSON object in the following format:");
+            promptBuilder.AppendLine("{");
+            promptBuilder.AppendLine("  \"isInvoice\": true/false,");
+            promptBuilder.AppendLine("  \"detectedDocumentType\": \"Invoice\" or \"Quote\" or \"Receipt\" or \"Other Document Type\",");
+            promptBuilder.AppendLine("  \"confidence\": 0.0-1.0");
+            promptBuilder.AppendLine("}");
+
+            return promptBuilder.ToString();
+        }
 
         private string BuildInvoiceHeaderPrompt()
         {
-            var promptBuilder = new System.Text.StringBuilder();
+            var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### INVOICE HEADER EXTRACTION ###");
             promptBuilder.AppendLine("You are an expert in extracting structured data from invoice images.");
@@ -169,7 +218,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         private string BuildInvoicePartiesPrompt()
         {
-            var promptBuilder = new System.Text.StringBuilder();
+            var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### INVOICE PARTIES EXTRACTION ###");
             promptBuilder.AppendLine("You are an expert in extracting structured data from invoice images.");
@@ -178,11 +227,11 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             promptBuilder.AppendLine("\n### EXTRACTION INSTRUCTIONS ###");
             promptBuilder.AppendLine("1. Extract the following information:");
             promptBuilder.AppendLine("   - Vendor name");
-            promptBuilder.AppendLine("   - Vendor address"); // Added address
+            promptBuilder.AppendLine("   - Vendor address");
             promptBuilder.AppendLine("   - Vendor contact information");
-            promptBuilder.AppendLine("   - Customer name"); // Added customer info
-            promptBuilder.AppendLine("   - Customer address"); // Added customer info
-           
+            promptBuilder.AppendLine("   - Customer name");
+            promptBuilder.AppendLine("   - Customer address");
+
             promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
             promptBuilder.AppendLine("Respond with a JSON object in the following format:");
             promptBuilder.AppendLine("{");
@@ -198,7 +247,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         private string BuildInvoiceLineItemsPrompt()
         {
-            var promptBuilder = new System.Text.StringBuilder();
+            var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### INVOICE LINE ITEMS EXTRACTION ###");
             promptBuilder.AppendLine("You are an expert in extracting structured data from invoice images.");
@@ -215,7 +264,6 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             promptBuilder.AppendLine("   - Payment method");
             promptBuilder.AppendLine("3. Extract any additional notes or important information.");
             promptBuilder.AppendLine("4. Provide an overall confidence score (0.0-1.0) for the extracted line items and payment details.");
-
 
             promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
             promptBuilder.AppendLine("Respond with a JSON object in the following format:");
@@ -236,16 +284,16 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
             return promptBuilder.ToString();
         }
-        
+
         private string BuildDocumentTypePrompt(Invoice invoice)
         {
-            var promptBuilder = new System.Text.StringBuilder();
-            
+            var promptBuilder = new StringBuilder();
+
             promptBuilder.AppendLine("### DOCUMENT TYPE VERIFICATION ###");
             promptBuilder.AppendLine("You are a document classification expert.");
             promptBuilder.AppendLine("Your task is to determine if the following text comes from a valid invoice document.");
             promptBuilder.AppendLine("If it's not an invoice, identify what type of document it appears to be.");
-            
+
             // Add text content
             promptBuilder.AppendLine("\n### DOCUMENT TEXT ###");
             if (!string.IsNullOrEmpty(invoice.RawText))
@@ -253,15 +301,15 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 // Provide more context if available
                 promptBuilder.AppendLine($"Vendor: {invoice.VendorName ?? "N/A"}");
                 promptBuilder.AppendLine($"Invoice Number: {invoice.InvoiceNumber ?? "N/A"}");
-                promptBuilder.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}"); // Reverted: TotalAmount is not nullable
+                promptBuilder.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}");
                 promptBuilder.AppendLine("\n--- Start of Document Text ---");
-                promptBuilder.AppendLine(invoice.RawText.Substring(0, Math.Min(1500, invoice.RawText.Length))); // Increased length slightly
+                promptBuilder.AppendLine(invoice.RawText.Substring(0, Math.Min(1500, invoice.RawText.Length)));
                 promptBuilder.AppendLine("--- End of Document Text ---");
             }
             else
             {
                 promptBuilder.AppendLine("(No text content available)");
-                
+
                 // Add metadata if available to help classification
                 if (!string.IsNullOrEmpty(invoice.FileName))
                 {
@@ -279,10 +327,9 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 {
                     promptBuilder.AppendLine($"Document date: {invoice.InvoiceDate.Value:yyyy-MM-dd}");
                 }
-                 // Reverted: No need to check for null on non-nullable decimal
-                 promptBuilder.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}"); 
+                promptBuilder.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}");
             }
-            
+
             promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
             promptBuilder.AppendLine("Respond with a JSON object in the following format:");
             promptBuilder.AppendLine("{");
@@ -293,15 +340,15 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             promptBuilder.AppendLine("  \"missingElements\": [\"List of invoice elements missing\"],");
             promptBuilder.AppendLine("  \"explanation\": \"Explanation of document classification\"");
             promptBuilder.AppendLine("}");
-            
+
             return promptBuilder.ToString();
         }
 
         private void ParseInvoiceHeaderResponse(string responseText, Invoice invoice)
         {
-             try
+            try
             {
-                 // Extract JSON part from response
+                // Extract JSON part from response
                 var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
                 if (!jsonMatch.Success)
                 {
@@ -310,7 +357,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 }
                 var jsonResponse = jsonMatch.Value;
 
-                 // Use case-insensitive deserialization and allow trailing commas
+                // Use case-insensitive deserialization and allow trailing commas
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -360,7 +407,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             }
             catch (JsonException jsonEx)
             {
-                 _logger.LogError(jsonEx, "Error parsing JSON from invoice header response: {ResponseText}", responseText);
+                _logger.LogError(jsonEx, "Error parsing JSON from invoice header response: {ResponseText}", responseText);
             }
             catch (Exception ex)
             {
@@ -370,9 +417,9 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         private void ParseInvoicePartiesResponse(string responseText, Invoice invoice)
         {
-             try
+            try
             {
-                 // Extract JSON part from response
+                // Extract JSON part from response
                 var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
                 if (!jsonMatch.Success)
                 {
@@ -381,7 +428,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 }
                 var jsonResponse = jsonMatch.Value;
 
-                 // Use case-insensitive deserialization and allow trailing commas
+                // Use case-insensitive deserialization and allow trailing commas
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -420,9 +467,9 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                     // invoice.CustomerAddress = customerAddressElement.GetString();
                 }
             }
-             catch (JsonException jsonEx)
+            catch (JsonException jsonEx)
             {
-                 _logger.LogError(jsonEx, "Error parsing JSON from invoice parties response: {ResponseText}", responseText);
+                _logger.LogError(jsonEx, "Error parsing JSON from invoice parties response: {ResponseText}", responseText);
             }
             catch (Exception ex)
             {
@@ -430,11 +477,11 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             }
         }
 
-         private void ParseInvoiceLineItemsResponse(string responseText, Invoice invoice)
+        private void ParseInvoiceLineItemsResponse(string responseText, Invoice invoice)
         {
-             try
+            try
             {
-                 // Extract JSON part from response
+                // Extract JSON part from response
                 var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
                 if (!jsonMatch.Success)
                 {
@@ -443,7 +490,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 }
                 var jsonResponse = jsonMatch.Value;
 
-                 // Use case-insensitive deserialization and allow trailing commas
+                // Use case-insensitive deserialization and allow trailing commas
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
@@ -480,46 +527,46 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                                 lineItem.UnitPrice = priceValue;
                         }
 
-                         if (item.TryGetProperty("totalPrice", out var totalPriceElement))
+                        if (item.TryGetProperty("totalPrice", out var totalPriceElement))
                         {
-                              if (totalPriceElement.ValueKind == JsonValueKind.Number)
-                                 lineItem.TotalPrice = totalPriceElement.GetDecimal();
-                             else if (totalPriceElement.ValueKind == JsonValueKind.String && decimal.TryParse(totalPriceElement.GetString(), out var priceValue)) // Declare priceValue here
-                                 lineItem.TotalPrice = priceValue;
-                         }
-                         invoice.LineItems.Add(lineItem);
+                            if (totalPriceElement.ValueKind == JsonValueKind.Number)
+                                lineItem.TotalPrice = totalPriceElement.GetDecimal();
+                            else if (totalPriceElement.ValueKind == JsonValueKind.String && decimal.TryParse(totalPriceElement.GetString(), out var priceValue))
+                                lineItem.TotalPrice = priceValue;
+                        }
+                        invoice.LineItems.Add(lineItem);
                     }
                 }
 
-                 if (root.TryGetProperty("paymentTerms", out var paymentTermsElement) && paymentTermsElement.ValueKind == JsonValueKind.String)
-                 {
-                     // Assuming PaymentTerms exists on Invoice model
+                if (root.TryGetProperty("paymentTerms", out var paymentTermsElement) && paymentTermsElement.ValueKind == JsonValueKind.String)
+                {
+                    // Assuming PaymentTerms exists on Invoice model
                     // invoice.PaymentTerms = paymentTermsElement.GetString();
-                 }
+                }
 
-                 if (root.TryGetProperty("paymentMethod", out var paymentMethodElement) && paymentMethodElement.ValueKind == JsonValueKind.String)
-                 {
-                      // Assuming PaymentMethod exists on Invoice model
+                if (root.TryGetProperty("paymentMethod", out var paymentMethodElement) && paymentMethodElement.ValueKind == JsonValueKind.String)
+                {
+                    // Assuming PaymentMethod exists on Invoice model
                     // invoice.PaymentMethod = paymentMethodElement.GetString();
-                 }
+                }
 
-                 if (root.TryGetProperty("notes", out var notesElement) && notesElement.ValueKind == JsonValueKind.String)
-                 {
-                      // Assuming Notes exists on Invoice model
+                if (root.TryGetProperty("notes", out var notesElement) && notesElement.ValueKind == JsonValueKind.String)
+                {
+                    // Assuming Notes exists on Invoice model
                     // invoice.Notes = notesElement.GetString();
-                     if (string.IsNullOrEmpty(invoice.RawText)) // Populate RawText if empty
+                    if (string.IsNullOrEmpty(invoice.RawText)) // Populate RawText if empty
                         invoice.RawText = notesElement.GetString();
-                 }
+                }
 
-                 if (root.TryGetProperty("confidence", out var confidenceElement) && confidenceElement.ValueKind == JsonValueKind.Number)
-                 {
-                     // Assuming ExtractionConfidence exists on Invoice model
+                if (root.TryGetProperty("confidence", out var confidenceElement) && confidenceElement.ValueKind == JsonValueKind.Number)
+                {
+                    // Assuming ExtractionConfidence exists on Invoice model
                     // invoice.ExtractionConfidence = confidenceElement.GetDouble();
-                 }
+                }
             }
-             catch (JsonException jsonEx)
+            catch (JsonException jsonEx)
             {
-                 _logger.LogError(jsonEx, "Error parsing JSON from invoice line items response: {ResponseText}", responseText);
+                _logger.LogError(jsonEx, "Error parsing JSON from invoice line items response: {ResponseText}", responseText);
             }
             catch (Exception ex)
             {
@@ -527,138 +574,175 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
             }
         }
 
-
-        private class DocumentVerificationResult
+        // Helper class for document type verification from images
+        internal class DocumentTypeVerificationResult
         {
             public bool IsInvoice { get; set; }
-            public string DetectedDocumentType { get; set; } = string.Empty;
+            public string DetectedDocumentType { get; set; } = "Unknown";
             public double Confidence { get; set; }
-            public List<string> InvoiceElements { get; set; } = new List<string>();
-            public List<string> MissingElements { get; set; } = new List<string>();
-            public string Explanation { get; set; } = string.Empty;
         }
 
-        private DocumentVerificationResult ParseDocumentTypeResponse(string responseText, ValidationResult result)
+        // Parses the response from the image-based document type verification prompt
+        private DocumentTypeVerificationResult ParseDocumentTypeVerificationResponse(string responseText)
         {
-            var verification = new DocumentVerificationResult();
-            
+            var result = new DocumentTypeVerificationResult();
             try
             {
-                // Extract JSON part from response
                 var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
                 if (!jsonMatch.Success)
                 {
-                    _logger.LogWarning("Could not extract JSON from Gemini document verification response");
-                    verification.IsInvoice = false;
-                    verification.DetectedDocumentType = "Unknown";
-                    verification.Explanation = "Failed to parse AI response";
-                    return verification;
+                    _logger.LogWarning("Could not extract JSON from Gemini document type verification response.");
+                    return result; // Default values indicate failure/unknown
                 }
-                
                 var jsonResponse = jsonMatch.Value;
-                
-                // Use case-insensitive deserialization and allow trailing commas
+
                 var options = new JsonSerializerOptions
                 {
                     PropertyNameCaseInsensitive = true,
                     AllowTrailingCommas = true,
                     ReadCommentHandling = JsonCommentHandling.Skip
                 };
-                
-                // Parse using JsonDocument
+
                 using JsonDocument doc = JsonDocument.Parse(jsonResponse);
                 var root = doc.RootElement;
-                
-                // Parse the verification result
-                if (root.TryGetProperty("isInvoice", out var isInvoiceElement) && 
-                    isInvoiceElement.ValueKind == JsonValueKind.True)
+
+                if (root.TryGetProperty("isInvoice", out var isInvoiceElement) && isInvoiceElement.ValueKind == JsonValueKind.True)
                 {
-                    verification.IsInvoice = true;
+                    result.IsInvoice = true;
                 }
-                
-                if (root.TryGetProperty("detectedDocumentType", out var docTypeElement))
+
+                if (root.TryGetProperty("detectedDocumentType", out var docTypeElement) && docTypeElement.ValueKind == JsonValueKind.String)
                 {
-                    if (docTypeElement.ValueKind == JsonValueKind.String)
-                    {
-                        verification.DetectedDocumentType = docTypeElement.GetString() ?? "Unknown";
-                    }
-                    else
-                    {
-                        _logger.LogWarning("detectedDocumentType property is not a string or is missing in Gemini document verification response");
-                        verification.DetectedDocumentType = "Unknown";
-                    }
+                    result.DetectedDocumentType = docTypeElement.GetString() ?? "Unknown";
                 }
-                else
+
+                if (root.TryGetProperty("confidence", out var confidenceElement) && confidenceElement.ValueKind == JsonValueKind.Number)
                 {
-                    _logger.LogWarning("detectedDocumentType property is missing in Gemini document verification response");
-                    verification.DetectedDocumentType = "Unknown";
+                    result.Confidence = confidenceElement.GetDouble();
                 }
-                
-                if (root.TryGetProperty("confidence", out var confidenceElement))
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogError(jsonEx, "Error parsing JSON from document type verification response: {ResponseText}", responseText);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing document type verification response.");
+            }
+            return result;
+        }
+
+        // Helper class for document type verification from text
+        internal class TextDocumentVerificationResult
+        {
+            public bool IsInvoice { get; set; }
+            public string DetectedDocumentType { get; set; } = "Unknown";
+            public double Confidence { get; set; }
+            public List<string> InvoiceElements { get; set; } = new List<string>();
+            public List<string> MissingElements { get; set; } = new List<string>();
+            public string Explanation { get; set; } = string.Empty;
+        }
+
+        // Parses the response from the text-based document type verification prompt
+        private TextDocumentVerificationResult ParseDocumentTypeResponse(string responseText, ValidationResult validationResult)
+        {
+            var result = new TextDocumentVerificationResult();
+            try
+            {
+                var jsonMatch = Regex.Match(responseText, @"\{.*\}", RegexOptions.Singleline);
+                if (!jsonMatch.Success)
                 {
-                    if (confidenceElement.ValueKind == JsonValueKind.Number)
-                    {
-                        verification.Confidence = confidenceElement.GetDouble();
-                    }
-                    else
-                    {
-                        _logger.LogWarning("confidence property is not a number or is missing in Gemini document verification response");
-                        verification.Confidence = 0.0;
-                    }
+                    _logger.LogWarning("Could not extract JSON from Gemini document type verification response");
+                    validationResult.AddIssue(ValidationSeverity.Warning, "Could not parse Gemini's document type verification response.");
+                    return result; // Default values indicate failure/unknown
                 }
-                else
+                var jsonResponse = jsonMatch.Value;
+
+                var options = new JsonSerializerOptions
                 {
-                     _logger.LogWarning("confidence property is missing in Gemini document verification response");
-                     verification.Confidence = 0.0;
+                    PropertyNameCaseInsensitive = true,
+                    AllowTrailingCommas = true,
+                    ReadCommentHandling = JsonCommentHandling.Skip
+                };
+
+                using JsonDocument doc = JsonDocument.Parse(jsonResponse);
+                var root = doc.RootElement;
+
+                if (root.TryGetProperty("isInvoice", out var isInvoiceElement))
+                {
+                    if (isInvoiceElement.ValueKind == JsonValueKind.True)
+                        result.IsInvoice = true;
+                    else if (isInvoiceElement.ValueKind == JsonValueKind.String && 
+                             bool.TryParse(isInvoiceElement.GetString(), out var boolValue))
+                        result.IsInvoice = boolValue;
                 }
-                if (root.TryGetProperty("invoiceElements", out var elementsElement) && 
-                    elementsElement.ValueKind == JsonValueKind.Array)
+
+                if (root.TryGetProperty("detectedDocumentType", out var docTypeElement) && docTypeElement.ValueKind == JsonValueKind.String)
                 {
-                    verification.InvoiceElements = new List<string>(); // Initialize list
+                    result.DetectedDocumentType = docTypeElement.GetString() ?? "Unknown";
+                }
+
+                if (root.TryGetProperty("confidence", out var confidenceElement) && confidenceElement.ValueKind == JsonValueKind.Number)
+                {
+                    result.Confidence = confidenceElement.GetDouble();
+                }
+
+                // Extract invoice elements found
+                if (root.TryGetProperty("invoiceElements", out var elementsElement) && elementsElement.ValueKind == JsonValueKind.Array)
+                {
                     foreach (var element in elementsElement.EnumerateArray())
                     {
                         if (element.ValueKind == JsonValueKind.String)
                         {
-                            verification.InvoiceElements.Add(element.GetString() ?? string.Empty);
+                            var elementStr = element.GetString();
+                            if (!string.IsNullOrEmpty(elementStr))
+                            {
+                                result.InvoiceElements.Add(elementStr);
+                                validationResult.AddIssue(ValidationSeverity.Info, $"Found invoice element: {elementStr}");
+                            }
                         }
                     }
-                    result.PresentInvoiceElements = verification.InvoiceElements;
                 }
-                
-                if (root.TryGetProperty("missingElements", out var missingElement) && 
-                    missingElement.ValueKind == JsonValueKind.Array)
+
+                // Extract missing invoice elements
+                if (root.TryGetProperty("missingElements", out var missingElement) && missingElement.ValueKind == JsonValueKind.Array)
                 {
-                     verification.MissingElements = new List<string>(); // Initialize list
                     foreach (var element in missingElement.EnumerateArray())
                     {
                         if (element.ValueKind == JsonValueKind.String)
                         {
-                            verification.MissingElements.Add(element.GetString() ?? string.Empty);
+                            var elementStr = element.GetString();
+                            if (!string.IsNullOrEmpty(elementStr))
+                            {
+                                result.MissingElements.Add(elementStr);
+                                validationResult.AddIssue(ValidationSeverity.Warning, $"Missing invoice element: {elementStr}");
+                            }
                         }
                     }
-                    result.MissingInvoiceElements = verification.MissingElements;
                 }
-                
-                if (root.TryGetProperty("explanation", out var explanationElement) && 
-                    explanationElement.ValueKind == JsonValueKind.String)
+
+                // Extract explanation
+                if (root.TryGetProperty("explanation", out var explanationElement) && explanationElement.ValueKind == JsonValueKind.String)
                 {
-                    verification.Explanation = explanationElement.GetString() ?? string.Empty;
-                    
-                    // Add explanation to result issues
-                    result.AddIssue(ValidationSeverity.Info, verification.Explanation);
+                    result.Explanation = explanationElement.GetString() ?? string.Empty;
+                    if (!string.IsNullOrEmpty(result.Explanation))
+                    {
+                        validationResult.AddIssue(ValidationSeverity.Info, $"Classification explanation: {result.Explanation}");
+                    }
                 }
+            }
+            catch (JsonException jsonEx)
+            {
+                _logger.LogError(jsonEx, "Error parsing JSON from document type verification response: {ResponseText}", responseText);
+                validationResult.AddIssue(ValidationSeverity.Error, $"Error parsing document classification: {jsonEx.Message}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error parsing document verification response");
-                verification.IsInvoice = false;
-                verification.DetectedDocumentType = "Unknown";
-                verification.Explanation = $"Error parsing AI response: {ex.Message}";
+                _logger.LogError(ex, "Error processing document type verification response");
+                validationResult.AddIssue(ValidationSeverity.Error, $"Error processing document classification: {ex.Message}");
             }
-            
-            return verification;
+            return result;
         }
-
         #endregion
     }
 }
