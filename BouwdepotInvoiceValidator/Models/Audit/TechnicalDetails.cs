@@ -16,5 +16,7 @@ namespace BouwdepotInvoiceValidator.Models.Audit
         public Dictionary<string, string> SystemParameters { get; set; } = new Dictionary<string, string>();
         public List<string> AppliedModels { get; set; } = new List<string>();
         public Dictionary<string, double> ModelConfidenceScores { get; set; } = new Dictionary<string, double>();
+        public Dictionary<string, string> DetailedMetrics { get; set; } = new Dictionary<string, string>();
+        public List<string> ProcessingNotes { get; set; } = new List<string>();
     }
 }

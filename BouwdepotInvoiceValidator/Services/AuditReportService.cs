@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Audit;
 
 namespace BouwdepotInvoiceValidator.Services
 {

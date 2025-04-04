@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Audit;
 using BouwdepotInvoiceValidator.Services;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Http;

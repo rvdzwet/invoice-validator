@@ -9,9 +9,9 @@ namespace BouwdepotInvoiceValidator.Models.Audit
     public class ProcessingStep
     {
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
-        public string StepName { get; set; } = string.Empty;
-        public string ProcessorId { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
+        public string ProcessName { get; set; } = string.Empty;
+        public string ProcessorIdentifier { get; set; } = string.Empty;
+        public string OutputState { get; set; } = string.Empty;
         public Dictionary<string, string> Parameters { get; set; } = new Dictionary<string, string>();
         public string InputHash { get; set; } = string.Empty;
         public string OutputHash { get; set; } = string.Empty;

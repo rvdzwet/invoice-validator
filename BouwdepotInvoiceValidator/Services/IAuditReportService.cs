@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Models.Audit;
 
 namespace BouwdepotInvoiceValidator.Services
 {
