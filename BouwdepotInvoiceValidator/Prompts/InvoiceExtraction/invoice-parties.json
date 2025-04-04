@@ -1,6 +1,18 @@
 {
   "name": "InvoicePartiesExtraction",
   "description": "Prompt template for extracting vendor and customer information from invoice images",
-  "template": "### INVOICE PARTIES EXTRACTION ###\nYou are an expert in extracting structured data from invoice images.\nYour task is to analyze the provided invoice images and extract vendor and customer information.\n\n### EXTRACTION INSTRUCTIONS ###\n1. Extract the following information:\n   - Vendor name\n   - Vendor address\n   - Vendor contact information\n   - Customer name\n   - Customer address\n\n### OUTPUT FORMAT ###\nRespond with a JSON object in the following format:\n{\n  \"vendorName\": \"Vendor name\",\n  \"vendorAddress\": \"Vendor address\",\n  \"vendorContact\": \"Vendor contact info\",\n  \"customerName\": \"Customer name\",\n  \"customerAddress\": \"Customer address\"\n}",
+  "template": {
+    "role": "You are an expert in extracting structured data from invoice images.",
+    "task": "Your task is to analyze the provided invoice images and extract vendor and customer information.",
+    "instructions": [
+      "Extract the following information:",
+      "- Vendor name",
+      "- Vendor address",
+      "- Vendor contact information",
+      "- Customer name",
+      "- Customer address"
+    ],
+    "outputFormat": "Respond with a JSON object in the following format: {\n  \"vendorName\": \"Vendor name\",\n  \"vendorAddress\": \"Vendor address\",\n  \"vendorContact\": \"Vendor contact info\",\n  \"customerName\": \"Customer name\",\n  \"customerAddress\": \"Customer address\"\n}"
+  },
   "parameters": []
 }

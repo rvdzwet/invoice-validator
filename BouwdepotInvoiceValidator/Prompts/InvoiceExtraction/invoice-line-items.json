@@ -1,6 +1,22 @@
 {
   "name": "InvoiceLineItemsExtraction",
   "description": "Prompt template for extracting line items, payment details, and notes from invoice images",
-  "template": "### INVOICE LINE ITEMS EXTRACTION ###\nYou are an expert in extracting structured data from invoice images.\nYour task is to analyze the provided invoice images and extract line items, payment details, and notes.\n\n### EXTRACTION INSTRUCTIONS ###\n1. Extract line items, including:\n   - Item description\n   - Quantity\n   - Unit price\n   - Total price per item\n2. Extract payment details:\n   - Payment terms\n   - Payment method\n3. Extract any additional notes or important information.\n4. Provide an overall confidence score (0.0-1.0) for the extracted line items and payment details.\n\n### OUTPUT FORMAT ###\nRespond with a JSON object in the following format:\n{\n  \"lineItems\": [\n    {\n      \"description\": \"Item description\",\n      \"quantity\": 1,\n      \"unitPrice\": 100.00,\n      \"totalPrice\": 100.00\n    }\n  ],\n  \"paymentTerms\": \"Payment terms\",\n  \"paymentMethod\": \"Payment method\",\n  \"notes\": \"Any additional important information\",\n  \"confidence\": 0.0-1.0\n}",
+  "template": {
+    "role": "You are an expert in extracting structured data from invoice images.",
+    "task": "Your task is to analyze the provided invoice images and extract line items, payment details, and notes.",
+    "instructions": [
+      "Extract line items, including:",
+      "- Item description",
+      "- Quantity",
+      "- Unit price",
+      "- Total price per item",
+      "Extract payment details:",
+      "- Payment terms",
+      "- Payment method",
+      "Extract any additional notes or important information.",
+      "Provide an overall confidence score (0.0-1.0) for the extracted line items and payment details."
+    ],
+    "outputFormat": "Respond with a JSON object in the following format: {\n  \"lineItems\": [\n    {\n      \"description\": \"Item description\",\n      \"quantity\": 1,\n      \"unitPrice\": 100.00,\n      \"totalPrice\": 100.00\n    }\n  ],\n  \"paymentTerms\": \"Payment terms\",\n  \"paymentMethod\": \"Payment method\",\n  \"notes\": \"Any additional important information\",\n  \"confidence\": 0.0-1.0\n}"
+  },
   "parameters": []
 }
