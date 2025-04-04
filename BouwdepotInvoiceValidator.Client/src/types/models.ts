@@ -135,11 +135,43 @@ export interface ValidationResult {
   
   // Vendor insights
   vendorInsights?: VendorInsights;
-  
+
   // Audit transparency properties
   auditReport?: AuditReport;
   signature?: DigitalSignature;
-  
+
+  // Home Improvement Analysis Details (from GeminiComprehensiveResponse)
+  homeImprovementConfidence?: number;
+  homeImprovementCategory?: string;
+  homeImprovementExplanation?: string;
+  homeImprovementKeywords?: string[];
+
+  // Fraud Detection Details (from GeminiComprehensiveResponse)
+  fraudDetectionConfidence?: number; // Specific confidence for fraud detection module
+  fraudAssessmentExplanation?: string;
+  // Note: fraudIndicators and recommendedActions seem mapped within FraudDetection interface
+
+  // Multi-modal Analysis Details (from GeminiComprehensiveResponse)
+  hasVisualAnomalies?: boolean;
+  // Note: visualAssessments might be mapped to visualAnalysis.detectedAnomalies or the deprecated visualAssessments
+
+  // Overall Assessment Details (from GeminiComprehensiveResponse)
+  detailedReasoning?: string;
+  // Note: recommendedAction might be mapped within fraudDetection
+
+  // Raw AI Responses (from GeminiComprehensiveResponse)
+  rawDocumentAnalysisResponse?: string;
+  rawHomeImprovementResponse?: string;
+  rawFraudDetectionResponse?: string;
+  rawLineItemAnalysisResponse?: string;
+  rawMultiModalResponse?: string;
+  rawAuditAssessmentResponse?: string;
+
+  // Analysis Timing (from GeminiComprehensiveResponse)
+  analysisStartTime?: string; // ISO date string
+  analysisCompletionTime?: string; // ISO date string
+  analysisDurationSeconds?: number; // Represent TimeSpan as seconds
+
   // Backward compatibility properties (deprecated)
   auditInfo?: AuditMetadata;
   criteriaAssessments?: CriterionAssessment[];

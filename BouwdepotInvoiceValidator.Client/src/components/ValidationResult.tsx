@@ -204,8 +204,8 @@ const ValidationResult: React.FC<ValidationResultProps> = ({ result }) => {
   return (
     <Card 
       elevation={3} 
-      sx={{ 
-        mt: { xs: 2, md: 0 },
+sx={{ 
+        mt: 0,
         borderTop: 6, 
         borderColor: getHeaderColor() 
       }}

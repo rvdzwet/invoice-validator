@@ -55,7 +55,7 @@ class ApiService {
    */
   constructor() {
     // API base URL - use environment variable in production
-    this.baseUrl = 'http://localhost:5105';
+    this.baseUrl = '';
     
     // Create axios instance with default config
     this.api = axios.create({

@@ -109,9 +109,10 @@ You can configure these features in the `appsettings.json` file:
 The UI now displays:
 
 - **Audit Documentation**: Detailed explanation of the decision-making process
-- **Criteria Assessment**: Breakdown of scores for different validation criteria
+- **Criteria Assessment**: Breakdown of scores for different validation criteria (Legacy view)
 - **Visual Assessment**: Results of the visual analysis of the invoice
-- **Confidence Metrics**: Confidence scores for each aspect of the validation
+- **Confidence Metrics**: Overall confidence score for the validation
+- **Comprehensive Details**: The main validation view now displays a wider range of information returned by the API, including document analysis details, home improvement specifics, fraud detection results, and analysis timing.
 
 ## Implementation Details
 
