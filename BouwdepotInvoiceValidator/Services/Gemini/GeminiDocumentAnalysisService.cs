@@ -165,35 +165,77 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         #region Helper Methods
 
-        private string BuildDocumentTypeVerificationPromptForImages()
+    private string BuildDocumentTypeVerificationPromptForImages()
+    {
+        _logger.LogDebug("Building document type verification from images prompt using template");
+        
+            // Try to get the prompt from the template service
+            try
+            {
+                var prompt = _promptService.GetPrompt("DocumentTypeVerificationFromImages", new Dictionary<string, string>());
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _logger.LogDebug("Successfully built document type verification from images prompt from template");
+                    return prompt;
+                }
+            }
+        catch (Exception ex)
         {
-            var promptBuilder = new StringBuilder();
-
-            promptBuilder.AppendLine("### DOCUMENT TYPE ANALYSIS FROM IMAGES ###");
-            promptBuilder.AppendLine("You are an expert document analyst specializing in identifying and classifying documents from images.");
-            promptBuilder.AppendLine("Your primary task is to determine if the provided images represent a valid invoice.");
-            promptBuilder.AppendLine("If it is an invoice, confirm this. If it's not an invoice, classify the document type (e.g., Quote, Receipt, Order Confirmation, Letter, etc.).");
-
-            promptBuilder.AppendLine("\n### ANALYSIS INSTRUCTIONS ###");
-            promptBuilder.AppendLine("1. Carefully examine the layout, structure, and content visible in the images.");
-            promptBuilder.AppendLine("2. Look for common invoice elements like 'Invoice Number', 'Invoice Date', 'Due Date', 'Total Amount', vendor/customer details, and line items.");
-            promptBuilder.AppendLine("3. Based on your analysis, determine if the document is an invoice.");
-            promptBuilder.AppendLine("4. If it's not an invoice, state the most likely document type.");
-            promptBuilder.AppendLine("5. Provide a confidence score (0.0-1.0) for your classification.");
-
-            promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
-            promptBuilder.AppendLine("Respond ONLY with a JSON object in the following format:");
-            promptBuilder.AppendLine("{");
-            promptBuilder.AppendLine("  \"isInvoice\": true/false,");
-            promptBuilder.AppendLine("  \"detectedDocumentType\": \"Invoice\" or \"Quote\" or \"Receipt\" or \"Other Document Type\",");
-            promptBuilder.AppendLine("  \"confidence\": 0.0-1.0");
-            promptBuilder.AppendLine("}");
-
-            return promptBuilder.ToString();
+            _logger.LogWarning(ex, "Error using prompt template for document type verification from images. Falling back to default prompt.");
         }
+        
+        // Fallback to the old hardcoded prompt if template fails
+        _logger.LogWarning("Using fallback hardcoded prompt for document type verification from images");
+        var promptBuilder = new StringBuilder();
+
+        promptBuilder.AppendLine("### DOCUMENT TYPE ANALYSIS FROM IMAGES ###");
+        promptBuilder.AppendLine("You are an expert document analyst specializing in identifying and classifying documents from images.");
+        promptBuilder.AppendLine("Your primary task is to determine if the provided images represent a valid invoice.");
+        promptBuilder.AppendLine("If it is an invoice, confirm this. If it's not an invoice, classify the document type (e.g., Quote, Receipt, Order Confirmation, Letter, etc.).");
+
+        promptBuilder.AppendLine("\n### ANALYSIS INSTRUCTIONS ###");
+        promptBuilder.AppendLine("1. Carefully examine the layout, structure, and content visible in the images.");
+        promptBuilder.AppendLine("2. Look for common invoice elements like 'Invoice Number', 'Invoice Date', 'Due Date', 'Total Amount', vendor/customer details, and line items.");
+        promptBuilder.AppendLine("3. Based on your analysis, determine if the document is an invoice.");
+        promptBuilder.AppendLine("4. If it's not an invoice, state the most likely document type.");
+        promptBuilder.AppendLine("5. Provide a confidence score (0.0-1.0) for your classification.");
+
+        promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
+        promptBuilder.AppendLine("Respond ONLY with a JSON object in the following format:");
+        promptBuilder.AppendLine("{");
+        promptBuilder.AppendLine("  \"isInvoice\": true/false,");
+        promptBuilder.AppendLine("  \"detectedDocumentType\": \"Invoice\" or \"Quote\" or \"Receipt\" or \"Other Document Type\",");
+        promptBuilder.AppendLine("  \"confidence\": 0.0-1.0");
+        promptBuilder.AppendLine("}");
+
+        return promptBuilder.ToString();
+    }
 
         private string BuildInvoiceHeaderPrompt()
         {
+            _logger.LogDebug("Building invoice header extraction prompt using template");
+            
+            // Try to get the prompt from the template service
+            try
+            {
+                var prompt = _promptService.GetPrompt("InvoiceHeaderExtraction", new Dictionary<string, string>());
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _logger.LogDebug("Successfully built invoice header extraction prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error using prompt template for invoice header extraction. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _logger.LogWarning("Using fallback hardcoded prompt for invoice header extraction");
             var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### INVOICE HEADER EXTRACTION ###");
@@ -225,6 +267,27 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         private string BuildInvoicePartiesPrompt()
         {
+            _logger.LogDebug("Building invoice parties extraction prompt using template");
+            
+            // Try to get the prompt from the template service
+            try
+            {
+                var prompt = _promptService.GetPrompt("InvoicePartiesExtraction", new Dictionary<string, string>());
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _logger.LogDebug("Successfully built invoice parties extraction prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error using prompt template for invoice parties extraction. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _logger.LogWarning("Using fallback hardcoded prompt for invoice parties extraction");
             var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### INVOICE PARTIES EXTRACTION ###");
@@ -254,6 +317,27 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         private string BuildInvoiceLineItemsPrompt()
         {
+            _logger.LogDebug("Building invoice line items extraction prompt using template");
+            
+            // Try to get the prompt from the template service
+            try
+            {
+                var prompt = _promptService.GetPrompt("InvoiceLineItemsExtraction", new Dictionary<string, string>());
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _logger.LogDebug("Successfully built invoice line items extraction prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error using prompt template for invoice line items extraction. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _logger.LogWarning("Using fallback hardcoded prompt for invoice line items extraction");
             var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### INVOICE LINE ITEMS EXTRACTION ###");

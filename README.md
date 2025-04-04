@@ -41,6 +41,14 @@ This project has been enhanced with multi-modal validation and audit transparenc
 
 ## Recent Updates
 
+### Prompt Template System Improvements (April 2025)
+
+- Fixed parameter handling in `GeminiDocumentAnalysisService` to properly use the prompt template system
+- Updated all prompt methods to include required parameters when calling `GetPrompt`
+- Added empty dictionary fallback for template parameters to ensure backward compatibility
+- Improved error handling and logging for prompt template loading
+- Enhanced prompt template system to better handle missing parameters
+
 ### Document Analysis Enhancements (April 2025)
 
 - **Document Type Verification First**: Modified the validation process to start with document type verification before proceeding with detailed analysis
