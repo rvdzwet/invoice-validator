@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Services.Prompts;
 
 namespace BouwdepotInvoiceValidator.Services.Gemini
 {
@@ -22,7 +23,8 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         public GeminiService(
             ILoggerFactory loggerFactory,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            PromptTemplateService promptTemplateService)
         {
             _loggerFactory = loggerFactory;
             _logger = _loggerFactory.CreateLogger<GeminiService>();
@@ -32,7 +34,9 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
                 _loggerFactory.CreateLogger<GeminiConversationService>(), configuration);
                 
             _documentService = new GeminiDocumentAnalysisService(
-                _loggerFactory.CreateLogger<GeminiDocumentAnalysisService>(), configuration);
+                _loggerFactory.CreateLogger<GeminiDocumentAnalysisService>(), 
+                configuration,
+                promptTemplateService);
                 
             _homeImprovementService = new GeminiHomeImprovementService(
                 _loggerFactory.CreateLogger<GeminiHomeImprovementService>(), configuration);

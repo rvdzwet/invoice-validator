@@ -71,7 +71,7 @@ This project has been enhanced with multi-modal validation and audit transparenc
 - Fixed lifetime scope issue by changing `AIModelProviderFactory` and `GeminiModelProvider` from singleton to scoped services
 - Removed caching of model provider in `UnifiedInvoiceValidationService` to prevent scoped service resolution from root provider
 
-### Prompt Refactoring (April 2025)
+### Prompt Refactoring and Template System (April 2025)
 
 - Split the large Gemini prompt for invoice data extraction (`BuildInvoiceDataExtractionPrompt`) into three smaller, more focused prompts:
     - `BuildInvoiceHeaderPrompt`: Extracts invoice number, dates, amounts, currency.
@@ -79,6 +79,16 @@ This project has been enhanced with multi-modal validation and audit transparenc
     - `BuildInvoiceLineItemsPrompt`: Extracts line items, payment terms, notes.
 - Updated `ExtractInvoiceDataFromImagesAsync` to use these new prompts and corresponding parsing methods (`ParseInvoiceHeaderResponse`, `ParseInvoicePartiesResponse`, `ParseInvoiceLineItemsResponse`).
 - Improved the `BuildDocumentTypePrompt` to include more context (vendor name, total amount) for better document classification.
+
+### Prompt Template System (April 2025)
+
+- Implemented a flexible prompt template system to manage AI prompts as external files
+- Created a structured JSON format for prompt templates with metadata, instructions, and examples
+- Added `PromptTemplateService` and `PromptFileService` to load and manage prompt templates
+- Implemented document type verification prompt as the first template
+- Modified `GeminiDocumentAnalysisService` to use the template system with fallback to hardcoded prompts
+- Added version tracking for prompt templates to monitor performance over time
+- Organized prompts in a directory structure by functional category
 
 ## New Features
 

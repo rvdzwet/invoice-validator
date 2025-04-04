@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services.Gemini;
+using BouwdepotInvoiceValidator.Services.Prompts;
 using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services
@@ -27,7 +28,8 @@ namespace BouwdepotInvoiceValidator.Services
             Gemini.GeminiAdvancedAnalysisService advancedAnalysisService,
             Gemini.GeminiLineItemAnalysisService lineItemAnalysisService,
             Gemini.GeminiFraudDetectionService fraudDetectionService,
-            BouwdepotInvoiceValidator.Services.Gemini.GeminiService geminiService)
+            BouwdepotInvoiceValidator.Services.Gemini.GeminiService geminiService,
+            PromptTemplateService promptTemplateService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
@@ -36,6 +38,10 @@ namespace BouwdepotInvoiceValidator.Services
             _lineItemAnalysisService = lineItemAnalysisService ?? throw new ArgumentNullException(nameof(lineItemAnalysisService));
             _fraudDetectionService = fraudDetectionService ?? throw new ArgumentNullException(nameof(fraudDetectionService));
             _geminiService = geminiService ?? throw new ArgumentNullException(nameof(geminiService));
+            
+            // We don't need to store promptTemplateService as a field since it's only used for dependency injection
+            // But we still validate it's not null
+            if (promptTemplateService == null) throw new ArgumentNullException(nameof(promptTemplateService));
             
             _logger.LogInformation("GeminiServiceProxy initialized with specialized service implementations");
         }

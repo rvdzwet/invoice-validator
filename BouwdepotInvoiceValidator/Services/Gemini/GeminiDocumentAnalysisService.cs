@@ -6,6 +6,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Services.Prompts;
 using System.Text;
 
 namespace BouwdepotInvoiceValidator.Services.Gemini
@@ -15,9 +16,15 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
     /// </summary>
     public class GeminiDocumentAnalysisService : GeminiServiceBase
     {
-        public GeminiDocumentAnalysisService(ILogger<GeminiDocumentAnalysisService> logger, IConfiguration configuration)
+        private readonly PromptTemplateService _promptService;
+        
+        public GeminiDocumentAnalysisService(
+            ILogger<GeminiDocumentAnalysisService> logger, 
+            IConfiguration configuration,
+            PromptTemplateService promptService)
             : base(logger, configuration)
         {
+            _promptService = promptService ?? throw new ArgumentNullException(nameof(promptService));
         }
 
         /// <summary>
@@ -287,6 +294,70 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
         private string BuildDocumentTypePrompt(Invoice invoice)
         {
+            _logger.LogDebug("Building document type verification prompt using template");
+            
+            // Prepare document context
+            var documentContext = new StringBuilder();
+            if (!string.IsNullOrEmpty(invoice.RawText))
+            {
+                // Provide more context if available
+                documentContext.AppendLine($"Vendor: {invoice.VendorName ?? "N/A"}");
+                documentContext.AppendLine($"Invoice Number: {invoice.InvoiceNumber ?? "N/A"}");
+                documentContext.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}");
+                documentContext.AppendLine("\n--- Start of Document Text ---");
+                documentContext.AppendLine(invoice.RawText.Substring(0, Math.Min(1500, invoice.RawText.Length)));
+                documentContext.AppendLine("--- End of Document Text ---");
+            }
+            else
+            {
+                documentContext.AppendLine("(No text content available)");
+
+                // Add metadata if available to help classification
+                if (!string.IsNullOrEmpty(invoice.FileName))
+                {
+                    documentContext.AppendLine($"\nFilename: {invoice.FileName}");
+                }
+                if (!string.IsNullOrEmpty(invoice.VendorName))
+                {
+                     documentContext.AppendLine($"Vendor Name: {invoice.VendorName}");
+                }
+                if (!string.IsNullOrEmpty(invoice.InvoiceNumber))
+                {
+                    documentContext.AppendLine($"Document number: {invoice.InvoiceNumber}");
+                }
+                if (invoice.InvoiceDate.HasValue)
+                {
+                    documentContext.AppendLine($"Document date: {invoice.InvoiceDate.Value:yyyy-MM-dd}");
+                }
+                documentContext.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}");
+            }
+            
+            // Create parameters for the prompt template
+            var parameters = new Dictionary<string, string>
+            {
+                { "context", documentContext.ToString() },
+                { "vendorName", invoice.VendorName ?? string.Empty }
+            };
+            
+            // Try to get the prompt from the template service
+            try
+            {
+                var prompt = _promptService.GetPrompt("DocumentTypeVerification", parameters);
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _logger.LogDebug("Successfully built document type verification prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error using prompt template for document type verification. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _logger.LogWarning("Using fallback hardcoded prompt for document type verification");
             var promptBuilder = new StringBuilder();
 
             promptBuilder.AppendLine("### DOCUMENT TYPE VERIFICATION ###");
@@ -296,39 +367,7 @@ namespace BouwdepotInvoiceValidator.Services.Gemini
 
             // Add text content
             promptBuilder.AppendLine("\n### DOCUMENT TEXT ###");
-            if (!string.IsNullOrEmpty(invoice.RawText))
-            {
-                // Provide more context if available
-                promptBuilder.AppendLine($"Vendor: {invoice.VendorName ?? "N/A"}");
-                promptBuilder.AppendLine($"Invoice Number: {invoice.InvoiceNumber ?? "N/A"}");
-                promptBuilder.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}");
-                promptBuilder.AppendLine("\n--- Start of Document Text ---");
-                promptBuilder.AppendLine(invoice.RawText.Substring(0, Math.Min(1500, invoice.RawText.Length)));
-                promptBuilder.AppendLine("--- End of Document Text ---");
-            }
-            else
-            {
-                promptBuilder.AppendLine("(No text content available)");
-
-                // Add metadata if available to help classification
-                if (!string.IsNullOrEmpty(invoice.FileName))
-                {
-                    promptBuilder.AppendLine($"\nFilename: {invoice.FileName}");
-                }
-                if (!string.IsNullOrEmpty(invoice.VendorName))
-                {
-                     promptBuilder.AppendLine($"Vendor Name: {invoice.VendorName}");
-                }
-                if (!string.IsNullOrEmpty(invoice.InvoiceNumber))
-                {
-                    promptBuilder.AppendLine($"Document number: {invoice.InvoiceNumber}");
-                }
-                if (invoice.InvoiceDate.HasValue)
-                {
-                    promptBuilder.AppendLine($"Document date: {invoice.InvoiceDate.Value:yyyy-MM-dd}");
-                }
-                promptBuilder.AppendLine($"Total Amount: {invoice.TotalAmount.ToString("C")}");
-            }
+            promptBuilder.Append(documentContext);
 
             promptBuilder.AppendLine("\n### OUTPUT FORMAT ###");
             promptBuilder.AppendLine("Respond with a JSON object in the following format:");
