@@ -1,0 +1,6 @@
+{
+  "name": "InvoiceHeaderExtraction",
+  "description": "Prompt template for extracting invoice header information from images",
+  "template": "### INVOICE HEADER EXTRACTION ###\nYou are an expert in extracting structured data from invoice images.\nYour task is to analyze the provided invoice images and extract key invoice header information.\n\n### EXTRACTION INSTRUCTIONS ###\n1. Extract the following invoice details:\n   - Invoice number\n   - Invoice date (format as YYYY-MM-DD)\n   - Due date (format as YYYY-MM-DD)\n   - Total amount (numeric value only)\n   - Tax/VAT amount (numeric value only)\n   - Currency\n\n### OUTPUT FORMAT ###\nRespond with a JSON object in the following format:\n{\n  \"invoiceNumber\": \"The invoice number\",\n  \"invoiceDate\": \"YYYY-MM-DD\",\n  \"dueDate\": \"YYYY-MM-DD\",\n  \"totalAmount\": 123.45,\n  \"taxAmount\": 23.45,\n  \"currency\": \"EUR\"\n}",
+  "parameters": []
+}

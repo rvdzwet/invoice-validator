@@ -102,6 +102,11 @@ builder.Services.AddSingleton<ImageProcessingService>();
 // GeminiImageGenerator is now created within GeminiAIService with the proper logger
 builder.Services.AddScoped<IAIDecisionExplainer, AIDecisionExplainer>();
 
+// Register prompt template services
+builder.Services.AddSingleton<BouwdepotInvoiceValidator.Services.Prompts.PromptFileService>();
+builder.Services.AddSingleton<BouwdepotInvoiceValidator.Services.Prompts.PromptTemplateService>();
+builder.Services.AddHostedService<BouwdepotInvoiceValidator.Services.Prompts.PromptInitializationService>();
+
 // Use the unified validation service
 builder.Services.AddScoped<IInvoiceValidationService, UnifiedInvoiceValidationService>();
 

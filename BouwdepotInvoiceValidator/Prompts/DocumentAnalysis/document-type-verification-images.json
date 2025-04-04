@@ -1,0 +1,6 @@
+{
+  "name": "DocumentTypeVerificationFromImages",
+  "description": "Prompt template for verifying document type from images",
+  "template": "### DOCUMENT TYPE ANALYSIS FROM IMAGES ###\nYou are an expert document analyst specializing in identifying and classifying documents from images.\nYour primary task is to determine if the provided images represent a valid invoice.\nIf it is an invoice, confirm this. If it's not an invoice, classify the document type (e.g., Quote, Receipt, Order Confirmation, Letter, etc.).\n\n### ANALYSIS INSTRUCTIONS ###\n1. Carefully examine the layout, structure, and content visible in the images.\n2. Look for common invoice elements like 'Invoice Number', 'Invoice Date', 'Due Date', 'Total Amount', vendor/customer details, and line items.\n3. Based on your analysis, determine if the document is an invoice.\n4. If it's not an invoice, state the most likely document type.\n5. Provide a confidence score (0.0-1.0) for your classification.\n\n### OUTPUT FORMAT ###\nRespond ONLY with a JSON object in the following format:\n{\n  \"isInvoice\": true/false,\n  \"detectedDocumentType\": \"Invoice\" or \"Quote\" or \"Receipt\" or \"Other Document Type\",\n  \"confidence\": 0.0-1.0\n}",
+  "parameters": []
+}
