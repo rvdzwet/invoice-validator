@@ -4,6 +4,12 @@ A comprehensive invoice validation system for Bouwdepot that uses AI to analyze 
 
 ## Recent Changes
 
+### Bug Fixes (April 2025)
+
+- Fixed build errors by updating model classes to match service implementation
+- Added missing properties to TechnicalDetails class
+- Updated ProcessingStep property names to align with service usage
+
 ### Code Refactoring (April 2025)
 
 The codebase has been refactored to improve maintainability by splitting large model files into smaller, more focused files:
