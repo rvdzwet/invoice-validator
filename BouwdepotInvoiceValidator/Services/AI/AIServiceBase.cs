@@ -1,11 +1,6 @@
-using System;
-using System.IO;
 using System.Reflection;
 using System.Text;
-using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services.AI
 {

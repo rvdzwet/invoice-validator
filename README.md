@@ -4,6 +4,10 @@ A comprehensive invoice validation system for Bouwdepot that uses AI to analyze 
 
 ## Recent Changes
 
+### README Update (April 5, 2025)
+
+- Updated the README.md file to include a section on logging conventions.
+
 ### Prompt Template System Improvements (May 2025)
 
 - Implemented a structured prompt template system for all AI interactions
@@ -91,6 +95,18 @@ The codebase has been refactored to improve maintainability by splitting large m
    - Models/Audit/TechnicalDetails.cs
 
 This refactoring follows SOLID principles, particularly the Single Responsibility Principle, making the codebase more maintainable and easier to understand.
+
+## Logging Conventions
+
+- We use Serilog for structured logging.
+- Log levels are used as follows:
+  - **Information**: General information about the application's operation.
+  - **Debug**: Detailed information for debugging purposes.
+  - **Warning**: Potential issues or non-critical errors.
+  - **Error**: Errors that do not cause the application to crash.
+  - **Fatal**: Errors that cause the application to crash.
+- All log messages should be meaningful and provide enough context to understand the event being logged.
+- Sensitive information should not be logged.
 
 ## Features
 

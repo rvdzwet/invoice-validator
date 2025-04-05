@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
-using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services
 {

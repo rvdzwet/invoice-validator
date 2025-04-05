@@ -1,10 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 using BouwdepotInvoiceValidator.Models;
-using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Services.AI;
 using BouwdepotInvoiceValidator.Services.Security;
 using BouwdepotInvoiceValidator.Services.Vendors;

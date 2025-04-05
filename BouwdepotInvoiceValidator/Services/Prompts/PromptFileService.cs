@@ -1,6 +1,5 @@
 using System.Text.Json;
 using BouwdepotInvoiceValidator.Models.Prompts;
-using Microsoft.AspNetCore.Hosting;
 
 namespace BouwdepotInvoiceValidator.Services.Prompts
 {

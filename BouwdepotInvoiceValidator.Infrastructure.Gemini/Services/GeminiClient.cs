@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -143,41 +136,5 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Gemini.Services
                 throw;
             }
         }
-    }
-
-    /// <summary>
-    /// Options for configuring the Gemini client
-    /// </summary>
-    public class GeminiOptions
-    {
-        /// <summary>
-        /// The base URL of the Gemini API
-        /// </summary>
-        public string ApiBaseUrl { get; set; } = "https://generativelanguage.googleapis.com/v1beta/";
-
-        /// <summary>
-        /// The API key for authenticating with the Gemini API
-        /// </summary>
-        public string ApiKey { get; set; }
-
-        /// <summary>
-        /// The default model to use for text-only prompts
-        /// </summary>
-        public string DefaultTextModel { get; set; } = "gemini-pro";
-
-        /// <summary>
-        /// The default model to use for multimodal prompts
-        /// </summary>
-        public string DefaultMultimodalModel { get; set; } = "gemini-pro-vision";
-
-        /// <summary>
-        /// The maximum number of retries for failed API calls
-        /// </summary>
-        public int MaxRetries { get; set; } = 3;
-
-        /// <summary>
-        /// The timeout for API calls in seconds
-        /// </summary>
-        public int TimeoutSeconds { get; set; } = 30;
     }
 }

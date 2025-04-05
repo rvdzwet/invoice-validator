@@ -21,6 +21,7 @@ function Start-Backend {
     Write-Header "Starting Backend API (.NET Core)"
     
     $backendPath = Join-Path $projectRoot "BouwdepotInvoiceValidator"
+    $backendPort = "8080"
     
     # Check if backend directory exists
     if (-not (Test-Path $backendPath)) {
@@ -31,13 +32,13 @@ function Start-Backend {
     # Start the backend process
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$backendPath'; dotnet run" -WindowStyle Normal
     
-    Write-Host "Backend API started. Swagger available at: https://localhost:7051/swagger" -ForegroundColor Green
+    Write-Host "Backend API started. Swagger available at: https://localhost:$backendPort/swagger" -ForegroundColor Green
 }
 
 function Start-Frontend {
     Write-Header "Starting Frontend (React)"
     
-    $frontendPath = Join-Path $projectRoot "BouwdepotInvoiceValidator.Client"
+    $frontendPath = Join-Path $projectRoot "BouwdepotInvoiceValidator.Interface"
     
     # Check if frontend directory exists
     if (-not (Test-Path $frontendPath)) {
@@ -55,7 +56,7 @@ function Start-Frontend {
         Start-Process powershell -ArgumentList "-NoExit", "-Command", "Set-Location '$frontendPath'; npm run dev" -WindowStyle Normal
     }
     
-    Write-Host "Frontend started. Available at: http://localhost:3000" -ForegroundColor Green
+    Write-Host "Frontend started. Available at: http://localhost:8080" -ForegroundColor Green
 }
 
 function Build-ProductionRelease {
@@ -149,7 +150,7 @@ function Main {
         
         Write-Host ""
         Write-Host "Application is now running." -ForegroundColor Green
-        Write-Host "- Access at: https://localhost:7051" -ForegroundColor Yellow
+        Write-Host "- Access at: https://localhost:8080" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "To stop the application, close the opened terminal window." -ForegroundColor Yellow
     }

@@ -1,14 +1,7 @@
-using System;
-using System.Collections.Generic;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using System.Linq;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services.Prompts;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services
 {

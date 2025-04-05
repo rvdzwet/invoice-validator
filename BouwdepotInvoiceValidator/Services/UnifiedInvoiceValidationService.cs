@@ -1,9 +1,5 @@
-using System;
-using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services.AI;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models.Enhanced;
 using BouwdepotInvoiceValidator.Services.Gemini;
 

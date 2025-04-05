@@ -1,5 +1,3 @@
-using System;
-
 namespace BouwdepotInvoiceValidator.Models
 {
     // This file has been refactored and its contents have been moved to separate files:

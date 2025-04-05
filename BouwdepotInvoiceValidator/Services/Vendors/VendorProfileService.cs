@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
-using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services.Vendors
 {

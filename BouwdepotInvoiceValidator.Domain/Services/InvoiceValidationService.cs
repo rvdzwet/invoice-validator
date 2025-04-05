@@ -1,6 +1,3 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Domain.Models.Analysis;
 using BouwdepotInvoiceValidator.Domain.Models.API;

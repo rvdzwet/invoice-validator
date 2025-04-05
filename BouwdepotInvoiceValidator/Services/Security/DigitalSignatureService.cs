@@ -1,13 +1,8 @@
-using System;
-using System.IO;
 using System.Security.Cryptography;
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Models.Enhanced; // Add this using statement
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services.Security
 {

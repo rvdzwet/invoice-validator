@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
-using BouwdepotInvoiceValidator.Services.Gemini;
 using BouwdepotInvoiceValidator.Services.Prompts;
-using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Services
 {

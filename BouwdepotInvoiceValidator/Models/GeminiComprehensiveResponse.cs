@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using BouwdepotInvoiceValidator.Models.Analysis;
-
 namespace BouwdepotInvoiceValidator.Models
 {
     /// <summary>

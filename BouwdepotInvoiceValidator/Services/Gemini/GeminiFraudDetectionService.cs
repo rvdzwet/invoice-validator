@@ -1,11 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Linq;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Models.Enhanced; // Using statement already exists
 

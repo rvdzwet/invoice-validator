@@ -1,10 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System;
-using System.Collections.Generic;
 using System.Drawing;
 using BouwdepotInvoiceValidator.Models.Enhanced; // Using statement already added
 // using BouwdepotInvoiceValidator.Models.Analysis; // Remove this using statement

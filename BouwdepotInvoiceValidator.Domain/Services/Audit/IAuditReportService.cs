@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Domain.Models.Analysis;
 using BouwdepotInvoiceValidator.Domain.Models.API;
 using BouwdepotInvoiceValidator.Domain.Models.Audit;

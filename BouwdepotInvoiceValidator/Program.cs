@@ -1,4 +1,3 @@
-using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services;
 using BouwdepotInvoiceValidator.Services.AI;
 using BouwdepotInvoiceValidator.Services.Security;

@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
 using BouwdepotInvoiceValidator.Models;
 using BouwdepotInvoiceValidator.Services.Prompts;
 

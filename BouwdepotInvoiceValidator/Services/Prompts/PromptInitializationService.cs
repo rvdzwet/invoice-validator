@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Hosting;
-
 namespace BouwdepotInvoiceValidator.Services.Prompts
 {
     public class PromptInitializationService : IHostedService
