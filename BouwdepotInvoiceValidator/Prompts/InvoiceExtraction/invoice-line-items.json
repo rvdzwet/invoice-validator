@@ -1,6 +1,11 @@
 {
-  "name": "InvoiceLineItemsExtraction",
-  "description": "Prompt template for extracting line items, payment details, and notes from invoice images",
+  "metadata": {
+    "name": "InvoiceLineItemsExtraction",
+    "version": "1.0",
+    "description": "Prompt template for extracting line items, payment details, and notes from invoice images",
+    "lastModified": "2025-04-05",
+    "author": "BouwdepotInvoiceValidator"
+  },
   "template": {
     "role": "You are an expert in extracting structured data from invoice images.",
     "task": "Your task is to analyze the provided invoice images and extract line items, payment details, and notes.",
@@ -18,5 +23,5 @@
     ],
     "outputFormat": "Respond with a JSON object in the following format: {\n  \"lineItems\": [\n    {\n      \"description\": \"Item description\",\n      \"quantity\": 1,\n      \"unitPrice\": 100.00,\n      \"totalPrice\": 100.00\n    }\n  ],\n  \"paymentTerms\": \"Payment terms\",\n  \"paymentMethod\": \"Payment method\",\n  \"notes\": \"Any additional important information\",\n  \"confidence\": 0.0-1.0\n}"
   },
-  "parameters": []
+  "examples": []
 }

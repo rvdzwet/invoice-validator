@@ -4,6 +4,19 @@ A comprehensive invoice validation system for Bouwdepot that uses AI to analyze 
 
 ## Recent Changes
 
+### Prompt Template System Improvements (May 2025)
+
+- Implemented a structured prompt template system for all AI interactions
+- Created standardized JSON-based prompt templates for different analysis types:
+  - Document type verification
+  - Invoice header extraction
+  - Invoice parties extraction
+  - Invoice line items analysis
+  - Fraud detection
+  - Home improvement validation
+- Improved prompt management with centralized template service
+- Added fallback mechanisms for backward compatibility
+
 ### Architecture Improvements (May 2025)
 
 - Implemented Domain-Driven Design (DDD) architecture to better separate concerns
@@ -86,3 +99,4 @@ This refactoring follows SOLID principles, particularly the Single Responsibilit
 - Bouwdepot eligibility validation
 - Comprehensive audit reports
 - Vendor profiling and verification
+- Structured prompt template system for AI interactions

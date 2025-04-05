@@ -1,0 +1,38 @@
+{
+  "metadata": {
+    "name": "LineItemAnalysis",
+    "version": "1.0",
+    "description": "Prompt template for analyzing invoice line items",
+    "lastModified": "2025-04-05",
+    "author": "BouwdepotInvoiceValidator"
+  },
+  "template": {
+    "role": "You are an expert in analyzing construction and home improvement purchases.",
+    "task": "Your task is to analyze the line items from an invoice to determine what was purchased and categorize each item.",
+    "instructions": [
+      "Analyze each line item to determine what product or service was purchased",
+      "Categorize each line item into home improvement categories (e.g., Plumbing, Electrical, Flooring, etc.)",
+      "Determine if the line items collectively represent home improvement purchases",
+      "Provide a summary of what was purchased and the main purpose of these purchases",
+      "Identify any line items that don't appear to be related to home improvement",
+      "Use these categories (or suggest more specific ones if appropriate):",
+      "- Plumbing: Pipes, faucets, toilets, showers, water heaters",
+      "- Electrical: Wiring, outlets, switches, lighting fixtures, electrical panels",
+      "- HVAC: Heating, ventilation, air conditioning components and systems",
+      "- Flooring: Tile, wood, laminate, vinyl, carpet",
+      "- Walls & Ceilings: Drywall, plaster, paint, wallpaper, ceiling materials",
+      "- Windows & Doors: Windows, doors, frames, glass, handles, locks",
+      "- Roofing: Roof tiles, shingles, flashing, gutters",
+      "- Kitchen: Cabinets, countertops, appliances, sinks",
+      "- Bathroom: Fixtures, vanities, tubs, shower enclosures",
+      "- Structural: Beams, supports, foundations, framing",
+      "- Outdoor: Decking, fencing, landscaping materials",
+      "- Tools & Equipment: Construction tools, rental equipment",
+      "- General Supplies: Fasteners, adhesives, general hardware",
+      "- Professional Services: Labor, design, inspection",
+      "- Non-Home Improvement: Items not related to home improvement"
+    ],
+    "outputFormat": "Respond with ONLY a JSON object in the following format: {\n  \"isHomeImprovement\": true/false,\n  \"confidence\": 0.0-1.0,\n  \"summary\": \"A general summary of what was purchased and the likely project\",\n  \"primaryPurpose\": \"The main purpose or project these items are for\",\n  \"categories\": [\"List of categories represented in the line items\"],\n  \"lineItemAnalysis\": [\n    {\n      \"description\": \"Original line item description\",\n      \"interpretedAs\": \"What this item actually is\",\n      \"category\": \"Home improvement category\",\n      \"isHomeImprovement\": true/false,\n      \"confidence\": 0.0-1.0,\n      \"notes\": \"Any additional notes about this item\"\n    }\n    // Repeat for each line item\n  ]\n}"
+  },
+  "examples": []
+}

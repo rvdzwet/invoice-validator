@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Services.Prompts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -16,11 +17,16 @@ namespace BouwdepotInvoiceValidator.Services
     public class GeminiHomeImprovementService : GeminiServiceBase
     {
         private readonly ILogger<GeminiHomeImprovementService> _homeLogger;
+        private readonly PromptTemplateService _promptService;
         
-        public GeminiHomeImprovementService(ILogger<GeminiHomeImprovementService> logger, IConfiguration configuration) 
+        public GeminiHomeImprovementService(
+            ILogger<GeminiHomeImprovementService> logger, 
+            IConfiguration configuration,
+            PromptTemplateService promptService) 
             : base(logger, configuration)
         {
             _homeLogger = logger;
+            _promptService = promptService ?? throw new ArgumentNullException(nameof(promptService));
         }
         
         /// <summary>
@@ -38,7 +44,7 @@ namespace BouwdepotInvoiceValidator.Services
                 var prompt = BuildHomeImprovementPrompt(invoice);
                 
                 // Call Gemini API with specific operation name for better logs
-                var response = await CallGeminiApiAsync(prompt, null, "HomeImprovementValidation");
+                var response = await CallGeminiApiAsync(prompt, invoice.PageImages, "HomeImprovementValidation");
                 result.RawGeminiResponse = response;
                 
                 // Parse the response
@@ -94,7 +100,7 @@ namespace BouwdepotInvoiceValidator.Services
                 var prompt = BuildFraudDetectionPrompt(invoice);
                 
                 // Call Gemini API with specific operation name for better logs
-                var response = await CallGeminiApiAsync(prompt, null, "FraudDetection");
+                var response = await CallGeminiApiAsync(prompt, invoice.PageImages, "FraudDetection");
                 
                 // Parse the response
                 bool possibleFraud = ParseFraudDetectionResponse(response);
@@ -122,6 +128,31 @@ namespace BouwdepotInvoiceValidator.Services
         {
             _homeLogger.LogDebug("Building home improvement validation prompt for {FileName}", invoice.FileName);
             
+            try
+            {
+                // Try to get the prompt from the template service
+                var parameters = new Dictionary<string, string>
+                {
+                    { "fileName", invoice.FileName ?? "Unknown" },
+                    { "vendorName", invoice.VendorName ?? "Unknown" }
+                };
+                
+                var prompt = _promptService.GetPrompt("MultiModalHomeImprovement", parameters);
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _homeLogger.LogDebug("Successfully built home improvement prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _homeLogger.LogWarning(ex, "Error using prompt template for home improvement. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _homeLogger.LogWarning("Using fallback hardcoded prompt for home improvement");
             var promptBuilder = new StringBuilder();
             
             promptBuilder.AppendLine("### VISUAL INVOICE ANALYSIS: HOME IMPROVEMENT CLASSIFICATION ###");
@@ -158,6 +189,31 @@ namespace BouwdepotInvoiceValidator.Services
         {
             _homeLogger.LogDebug("Building fraud detection prompt for {FileName}", invoice.FileName);
             
+            try
+            {
+                // Try to get the prompt from the template service
+                var parameters = new Dictionary<string, string>
+                {
+                    { "fileName", invoice.FileName ?? "Unknown" },
+                    { "vendorName", invoice.VendorName ?? "Unknown" }
+                };
+                
+                var prompt = _promptService.GetPrompt("FraudDetection", parameters);
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _homeLogger.LogDebug("Successfully built fraud detection prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _homeLogger.LogWarning(ex, "Error using prompt template for fraud detection. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _homeLogger.LogWarning("Using fallback hardcoded prompt for fraud detection");
             var promptBuilder = new StringBuilder();
             
             promptBuilder.AppendLine("### VISUAL FRAUD DETECTION ###");

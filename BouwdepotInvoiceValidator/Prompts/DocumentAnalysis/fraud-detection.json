@@ -1,0 +1,25 @@
+{
+  "metadata": {
+    "name": "FraudDetection",
+    "version": "1.0",
+    "description": "Prompt template for detecting fraud in invoice images",
+    "lastModified": "2025-04-05",
+    "author": "BouwdepotInvoiceValidator"
+  },
+  "template": {
+    "role": "You are an expert in detecting visual indications of potentially fraudulent invoices.",
+    "task": "Using ONLY VISUAL ANALYSIS, examine this invoice for signs of tampering, manipulation, or fraud.",
+    "instructions": [
+      "DO NOT read or analyze the text content directly - focus exclusively on visual patterns that may indicate fraud.",
+      "Focus on these key visual fraud indicators:",
+      "1. INCONSISTENT FORMATTING: Different fonts, sizes, or styles within the document",
+      "2. ALIGNMENT ISSUES: Irregular spacing, misaligned elements, or unusual layout",
+      "3. DIGITAL MANIPULATION: Signs of digital editing, blurring, or artifacts",
+      "4. IRREGULAR PATTERNS: Visual patterns that deviate from standard invoice formats",
+      "5. STAMP/SIGNATURE ANALYSIS: Visual assessment of any stamps or signatures",
+      "Pay special attention to the vendor '{vendorName}' if present in the document."
+    ],
+    "outputFormat": "Respond with ONLY a JSON object in the following format: {\n  \"possibleFraud\": true/false,\n  \"confidence\": 0.0-1.0,\n  \"visualEvidence\": \"Description of specific visual evidence supporting your conclusion\",\n  \"visualIndicators\": [\"List of specific visual fraud indicators detected\"]\n}"
+  },
+  "examples": []
+}

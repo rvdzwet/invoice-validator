@@ -1,6 +1,11 @@
 {
-  "name": "DocumentTypeVerificationFromImages",
-  "description": "Prompt template for verifying document type from images",
+  "metadata": {
+    "name": "DocumentTypeVerificationFromImages",
+    "version": "1.0",
+    "description": "Prompt template for verifying document type from images",
+    "lastModified": "2025-04-05",
+    "author": "BouwdepotInvoiceValidator"
+  },
   "template": {
     "role": "You are an expert document analyst specializing in identifying and classifying documents from images.",
     "task": "Your primary task is to determine if the provided images represent a valid invoice. If it is an invoice, confirm this. If it's not an invoice, classify the document type (e.g., Quote, Receipt, Order Confirmation, Letter, etc.).",
@@ -13,5 +18,5 @@
     ],
     "outputFormat": "Respond ONLY with a JSON object in the following format: { \"isInvoice\": true/false, \"detectedDocumentType\": \"Invoice\", \"confidence\": 0.0-1.0 }"
   },
-  "parameters": []
+  "examples": []
 }

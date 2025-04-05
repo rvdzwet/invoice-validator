@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using System.Linq;
 using BouwdepotInvoiceValidator.Models;
+using BouwdepotInvoiceValidator.Services.Prompts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -17,11 +18,16 @@ namespace BouwdepotInvoiceValidator.Services
     public class GeminiLineItemAnalysisService : GeminiServiceBase
     {
         private readonly ILogger<GeminiLineItemAnalysisService> _lineItemLogger;
+        private readonly PromptTemplateService _promptService;
         
-        public GeminiLineItemAnalysisService(ILogger<GeminiLineItemAnalysisService> logger, IConfiguration configuration) 
+        public GeminiLineItemAnalysisService(
+            ILogger<GeminiLineItemAnalysisService> logger, 
+            IConfiguration configuration,
+            PromptTemplateService promptService) 
             : base(logger, configuration)
         {
             _lineItemLogger = logger;
+            _promptService = promptService ?? throw new ArgumentNullException(nameof(promptService));
         }
         
         /// <summary>
@@ -74,6 +80,58 @@ namespace BouwdepotInvoiceValidator.Services
         {
             _lineItemLogger.LogDebug("Building line item analysis prompt for {FileName}", invoice.FileName);
             
+            try
+            {
+                // Build context for the prompt
+                var contextBuilder = new StringBuilder();
+                
+                if (!string.IsNullOrEmpty(invoice.VendorName))
+                {
+                    contextBuilder.AppendLine($"Vendor: {invoice.VendorName}");
+                }
+                
+                if (invoice.InvoiceDate.HasValue)
+                {
+                    contextBuilder.AppendLine($"Invoice Date: {invoice.InvoiceDate.Value:yyyy-MM-dd}");
+                }
+                
+                if (!string.IsNullOrEmpty(invoice.InvoiceNumber))
+                {
+                    contextBuilder.AppendLine($"Invoice Number: {invoice.InvoiceNumber}");
+                }
+                
+                contextBuilder.AppendLine($"Total Amount: {invoice.TotalAmount:C}");
+                
+                contextBuilder.AppendLine("\nLine Items:");
+                foreach (var item in invoice.LineItems)
+                {
+                    contextBuilder.AppendLine($"- {item.Description}");
+                    contextBuilder.AppendLine($"  Quantity: {item.Quantity}, Unit Price: {item.UnitPrice:C}, Total: {item.TotalPrice:C}");
+                }
+                
+                // Try to get the prompt from the template service
+                var parameters = new Dictionary<string, string>
+                {
+                    { "context", contextBuilder.ToString() },
+                    { "vendorName", invoice.VendorName ?? "Unknown" }
+                };
+                
+                var prompt = _promptService.GetPrompt("LineItemAnalysis", parameters);
+                
+                // If we got a valid prompt, return it
+                if (!string.IsNullOrEmpty(prompt))
+                {
+                    _lineItemLogger.LogDebug("Successfully built line item analysis prompt from template");
+                    return prompt;
+                }
+            }
+            catch (Exception ex)
+            {
+                _lineItemLogger.LogWarning(ex, "Error using prompt template for line item analysis. Falling back to default prompt.");
+            }
+            
+            // Fallback to the old hardcoded prompt if template fails
+            _lineItemLogger.LogWarning("Using fallback hardcoded prompt for line item analysis");
             var promptBuilder = new StringBuilder();
             
             promptBuilder.AppendLine("### LINE ITEM ANALYSIS ###");

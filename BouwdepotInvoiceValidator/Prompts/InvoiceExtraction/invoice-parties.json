@@ -1,6 +1,11 @@
 {
-  "name": "InvoicePartiesExtraction",
-  "description": "Prompt template for extracting vendor and customer information from invoice images",
+  "metadata": {
+    "name": "InvoicePartiesExtraction",
+    "version": "1.0",
+    "description": "Prompt template for extracting vendor and customer information from invoice images",
+    "lastModified": "2025-04-05",
+    "author": "BouwdepotInvoiceValidator"
+  },
   "template": {
     "role": "You are an expert in extracting structured data from invoice images.",
     "task": "Your task is to analyze the provided invoice images and extract vendor and customer information.",
@@ -14,5 +19,5 @@
     ],
     "outputFormat": "Respond with a JSON object in the following format: {\n  \"vendorName\": \"Vendor name\",\n  \"vendorAddress\": \"Vendor address\",\n  \"vendorContact\": \"Vendor contact info\",\n  \"customerName\": \"Customer name\",\n  \"customerAddress\": \"Customer address\"\n}"
   },
-  "parameters": []
+  "examples": []
 }

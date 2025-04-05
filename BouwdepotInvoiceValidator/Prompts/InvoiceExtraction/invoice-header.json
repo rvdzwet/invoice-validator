@@ -1,6 +1,11 @@
 {
-  "name": "InvoiceHeaderExtraction",
-  "description": "Prompt template for extracting invoice header information from images",
+  "metadata": {
+    "name": "InvoiceHeaderExtraction",
+    "version": "1.0",
+    "description": "Prompt template for extracting invoice header information from images",
+    "lastModified": "2025-04-05",
+    "author": "BouwdepotInvoiceValidator"
+  },
   "template": {
     "role": "You are an expert in extracting structured data from invoice images.",
     "task": "Your task is to analyze the provided invoice images and extract key invoice header information.",
@@ -15,5 +20,5 @@
     ],
     "outputFormat": "Respond with a JSON object in the following format: {\n  \"invoiceNumber\": \"The invoice number\",\n  \"invoiceDate\": \"YYYY-MM-DD\",\n  \"dueDate\": \"YYYY-MM-DD\",\n  \"totalAmount\": 123.45,\n  \"taxAmount\": 23.45,\n  \"currency\": \"EUR\"\n}"
   },
-  "parameters": []
+  "examples": []
 }
