@@ -19,6 +19,11 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BouwdepotInvoiceValidator.Domain\BouwdepotInvoiceValidator.Domain.csproj" />
+    <ProjectReference Include="..\BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Gemini.csproj" />
+  </ItemGroup>
+
   <!-- 
     web.config is automatically included by the SDK as Content if it exists.
     No need to explicitly include it here. It will be copied to the publish output.

@@ -4,6 +4,37 @@ A comprehensive invoice validation system for Bouwdepot that uses AI to analyze 
 
 ## Recent Changes
 
+### Architecture Improvements (May 2025)
+
+- Implemented Domain-Driven Design (DDD) architecture to better separate concerns
+- Created a clean domain layer with well-defined interfaces and models
+- Simplified the invoice analysis process with a streamlined pipeline approach
+- Improved error handling and logging throughout the application
+- Added comprehensive documentation to all interfaces and models
+
+### Code Refactoring (May 2025)
+
+- Simplified the invoice analysis process by introducing a step-by-step pipeline:
+  1. Language detection
+  2. Document layout analysis
+  3. Invoice structure extraction
+  4. Fraud detection
+  5. Bouwdepot rules validation
+  6. Audit report generation
+
+- Created domain interfaces for AI services:
+  - `ILanguageDetector`: Detects the primary language of invoice documents
+  - `IDocumentLayoutAnalyzer`: Analyzes the layout of invoice documents
+  - `IInvoiceStructureExtractor`: Extracts structured data from invoice documents
+  - `IFraudDetector`: Detects potential fraud in invoice documents
+  - `IBouwdepotRulesValidator`: Validates invoices against Bouwdepot-specific rules
+  - `IAuditReportService`: Generates and persists audit reports
+
+- Simplified API response models:
+  - Created a clean `SimplifiedValidationResponse` model for API responses
+  - Removed redundant and unused properties from response models
+  - Improved documentation of response models
+
 ### Bug Fixes (April 2025)
 
 - Fixed build errors by updating model classes to match service implementation

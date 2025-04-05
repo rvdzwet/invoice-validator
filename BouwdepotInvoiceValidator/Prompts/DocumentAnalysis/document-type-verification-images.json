@@ -11,7 +11,7 @@
       "If it's not an invoice, state the most likely document type.",
       "Provide a confidence score (0.0-1.0) for your classification."
     ],
-    "outputFormat": "Respond ONLY with a JSON object in the following format: { \"isInvoice\": true/false, \"detectedDocumentType\": \"Invoice\" or \"Quote\" or \"Receipt\" or \"Other Document Type\", \"confidence\": 0.0-1.0 }"
+    "outputFormat": "Respond ONLY with a JSON object in the following format: { \"isInvoice\": true/false, \"detectedDocumentType\": \"Invoice\", \"confidence\": 0.0-1.0 }"
   },
   "parameters": []
 }
