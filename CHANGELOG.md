@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2025-04-06
+
+### Fixed
+- Fixed build errors in InvoiceValidationHelpers.cs
+- Updated MapToValidationResult method to match ValidationResult class properties
+- Fixed property names: Id -> ValidationId, ProcessingInfo -> Processing, InvoiceData -> Invoice
+- Fixed FraudAnalysis mapping to match ValidationResult class structure
+
 ## [1.0.0] - 2025-04-06
 
 ### Added

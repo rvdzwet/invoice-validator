@@ -4,6 +4,12 @@ A comprehensive invoice validation system for Bouwdepot that uses AI to analyze 
 
 ## Recent Changes
 
+### Build Fix (April 6, 2025)
+
+- Fixed build errors in InvoiceValidationHelpers.cs
+- Updated MapToValidationResult method to match ValidationResult class properties
+- Fixed property names and structure to align with domain models
+
 ### Invoice Validation Implementation (April 6, 2025)
 
 - Implemented comprehensive `InvoiceValidationService` for construction fund invoice validation
