@@ -63,7 +63,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             var result = new ValidationResult
             {
-                Id = context.Id,
+                ValidationId = context.Id,
                 Status = MapOutcomeToStatus(context.OverallOutcome),
                 Summary = context.OverallOutcomeSummary,
                 Issues = context.Issues.Select(i => new ValidationIssue
@@ -73,7 +73,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     Severity = i.Severity,
                     Field = i.Field
                 }).ToList(),
-                ProcessingInfo = new ProcessingInfo
+                Processing = new ProcessingInfo
                 {
                     DurationMs = durationMs,
                     ModelsUsed = context.AIModelsUsed.Select(m => $"{m.ModelName} {m.ModelVersion}").ToList(),
@@ -84,7 +84,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             // Add invoice data if available
             if (context.ExtractedInvoice != null)
             {
-                result.InvoiceData = new InvoiceData
+                result.Invoice = new InvoiceData
                 {
                     InvoiceNumber = context.ExtractedInvoice.InvoiceNumber,
                     InvoiceDate = context.ExtractedInvoice.InvoiceDate,
@@ -120,17 +120,20 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             // Add fraud analysis if available
             if (context.FraudAnalysis != null)
             {
-                result.FraudAnalysis = new FraudAnalysisResult
+                // Add fraud indicators
+                result.FraudIndicators = context.FraudAnalysis.Indicators.Select(i => new FraudIndicator
                 {
-                    RiskLevel = context.FraudAnalysis.RiskLevel,
+                    Category = i.Category,
+                    Description = i.Description,
+                    Confidence = i.Confidence
+                }).ToList();
+                
+                // Set fraud risk assessment
+                result.FraudRisk = new FraudRiskAssessment
+                {
+                    RiskLevel = (FraudRiskLevel)Enum.Parse(typeof(FraudRiskLevel), context.FraudAnalysis.RiskLevel, true),
                     RiskScore = context.FraudAnalysis.RiskScore,
-                    Summary = context.FraudAnalysis.Summary,
-                    Indicators = context.FraudAnalysis.Indicators.Select(i => new FraudIndicator
-                    {
-                        Category = i.Category,
-                        Description = i.Description,
-                        Confidence = i.Confidence
-                    }).ToList()
+                    Summary = context.FraudAnalysis.Summary
                 };
             }
             
