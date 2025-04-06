@@ -3,7 +3,7 @@
     "name": "MultiModalHomeImprovement",
     "version": "1.0",
     "description": "Prompt template for analyzing home improvement invoices with images",
-    "lastModified": "2025-04-05",
+    "lastModified": "2025-04-06",
     "author": "BouwdepotInvoiceValidator"
   },
   "template": {

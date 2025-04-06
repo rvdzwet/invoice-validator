@@ -3,7 +3,7 @@
     "name": "DocumentTypeVerification",
     "version": "1.0",
     "description": "Prompt for verifying if a document is an invoice or identifying its type",
-    "lastModified": "2025-04-04",
+    "lastModified": "2025-04-06",
     "author": "BouwdepotInvoiceValidator Team"
   },
   "template": {

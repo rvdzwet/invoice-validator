@@ -3,7 +3,7 @@
     "name": "LineItemAnalysis",
     "version": "1.0",
     "description": "Prompt template for analyzing invoice line items",
-    "lastModified": "2025-04-05",
+    "lastModified": "2025-04-06",
     "author": "BouwdepotInvoiceValidator"
   },
   "template": {

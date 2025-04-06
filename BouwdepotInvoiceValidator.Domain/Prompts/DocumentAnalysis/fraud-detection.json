@@ -3,7 +3,7 @@
     "name": "FraudDetection",
     "version": "1.0",
     "description": "Prompt template for detecting fraud in invoice images",
-    "lastModified": "2025-04-05",
+    "lastModified": "2025-04-06",
     "author": "BouwdepotInvoiceValidator"
   },
   "template": {

@@ -3,7 +3,7 @@
     "name": "InvoiceLineItemsExtraction",
     "version": "1.0",
     "description": "Prompt template for extracting line items, payment details, and notes from invoice images",
-    "lastModified": "2025-04-05",
+    "lastModified": "2025-04-06",
     "author": "BouwdepotInvoiceValidator"
   },
   "template": {
@@ -18,10 +18,11 @@
       "Extract payment details:",
       "- Payment terms",
       "- Payment method",
+      "- Payment reference number",
       "Extract any additional notes or important information.",
       "Provide an overall confidence score (0.0-1.0) for the extracted line items and payment details."
     ],
-    "outputFormat": "Respond with a JSON object in the following format: {\n  \"lineItems\": [\n    {\n      \"description\": \"Item description\",\n      \"quantity\": 1,\n      \"unitPrice\": 100.00,\n      \"totalPrice\": 100.00\n    }\n  ],\n  \"paymentTerms\": \"Payment terms\",\n  \"paymentMethod\": \"Payment method\",\n  \"notes\": \"Any additional important information\",\n  \"confidence\": 0.0-1.0\n}"
+    "outputFormat": "Respond with a JSON object in the following format: {\n  \"lineItems\": [\n    {\n      \"description\": \"Item description\",\n      \"quantity\": 1,\n      \"unitPrice\": 100.00,\n      \"totalPrice\": 100.00\n    }\n  ],\n  \"paymentTerms\": \"Payment terms\",\n  \"paymentMethod\": \"Payment method\",\n  \"paymentReference\": \"Payment reference number\",\n  \"notes\": \"Any additional important information\",\n  \"confidence\": 0.0-1.0\n}"
   },
   "examples": []
 }

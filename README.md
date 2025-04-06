@@ -4,6 +4,20 @@ A comprehensive invoice validation system for Bouwdepot that uses AI to analyze 
 
 ## Recent Changes
 
+### Invoice Validation Implementation (April 6, 2025)
+
+- Implemented comprehensive `InvoiceValidationService` for construction fund invoice validation
+- Created supporting classes for validation context, responses, and helper methods
+- Implemented a structured workflow for invoice validation:
+  - Language detection
+  - Document type verification
+  - Invoice structure extraction
+  - Fraud detection
+  - Bouwdepot eligibility validation
+  - Audit report generation
+- Updated prompt templates to better support the validation workflow
+- Added CHANGELOG.md file to track project changes
+
 ### README Update (April 5, 2025)
 
 - Updated the README.md file to include a section on logging conventions.

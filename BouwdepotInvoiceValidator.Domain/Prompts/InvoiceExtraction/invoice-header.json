@@ -3,7 +3,7 @@
     "name": "InvoiceHeaderExtraction",
     "version": "1.0",
     "description": "Prompt template for extracting invoice header information from images",
-    "lastModified": "2025-04-05",
+    "lastModified": "2025-04-06",
     "author": "BouwdepotInvoiceValidator"
   },
   "template": {
