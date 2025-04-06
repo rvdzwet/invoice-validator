@@ -5,9 +5,9 @@ VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotInvoiceValidator", "BouwdepotInvoiceValidator\BouwdepotInvoiceValidator.csproj", "{41E71E71-E504-906E-F0B8-3A41B048E29F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotInvoiceValidator.Domain", "BouwdepotInvoiceValidator.Domain\BouwdepotInvoiceValidator.Domain.csproj", "{056E40EC-5287-4754-BB12-040EC91AC11E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotInvoiceValidator.Domain.Services", "BouwdepotInvoiceValidator.Domain\BouwdepotInvoiceValidator.Domain.Services.csproj", "{056E40EC-5287-4754-BB12-040EC91AC11E}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotInvoiceValidator.Infrastructure.Gemini", "BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Gemini.csproj", "{CD266110-9C4A-4ABB-82A3-95687D1D53AE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotInvoiceValidator.Infrastructure.Providers.Google", "BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Providers.Google.csproj", "{CD266110-9C4A-4ABB-82A3-95687D1D53AE}"
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "BouwdepotInvoiceValidator.Interface", "BouwdepotInvoiceValidator.Interface\BouwdepotInvoiceValidator.Interface.esproj", "{250740FF-26ED-95B9-F432-EC1CB9F6C558}"
 EndProject
@@ -18,6 +18,16 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		README.md = README.md
 		run-app.ps1 = run-app.ps1
 	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotValidationValidator.Infrastructure.Abstractions", "BouwdepotValidation.Infrastructure\BouwdepotValidationValidator.Infrastructure.Abstractions.csproj", "{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Infrastructure", "Infrastructure", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Domain", "Domain", "{1AC5093A-27A9-433E-AD7E-2424A747F7CD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Host", "Host", "{4BE73586-25A4-4366-A0B8-110DBF2F549C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BouwdepotInvoiceValidator.Domain.Models", "BouwdepotInvoiceValidator.Domain.Models\BouwdepotInvoiceValidator.Domain.Models.csproj", "{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -83,9 +93,41 @@ Global
 		{250740FF-26ED-95B9-F432-EC1CB9F6C558}.Release|x86.ActiveCfg = Release|Any CPU
 		{250740FF-26ED-95B9-F432-EC1CB9F6C558}.Release|x86.Build.0 = Release|Any CPU
 		{250740FF-26ED-95B9-F432-EC1CB9F6C558}.Release|x86.Deploy.0 = Release|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Debug|x64.Build.0 = Debug|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Debug|x86.Build.0 = Debug|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Release|x64.ActiveCfg = Release|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Release|x64.Build.0 = Release|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Release|x86.ActiveCfg = Release|Any CPU
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D}.Release|x86.Build.0 = Release|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Debug|x64.Build.0 = Debug|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Debug|x86.Build.0 = Debug|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Release|x64.ActiveCfg = Release|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Release|x64.Build.0 = Release|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Release|x86.ActiveCfg = Release|Any CPU
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{41E71E71-E504-906E-F0B8-3A41B048E29F} = {4BE73586-25A4-4366-A0B8-110DBF2F549C}
+		{056E40EC-5287-4754-BB12-040EC91AC11E} = {1AC5093A-27A9-433E-AD7E-2424A747F7CD}
+		{CD266110-9C4A-4ABB-82A3-95687D1D53AE} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{250740FF-26ED-95B9-F432-EC1CB9F6C558} = {4BE73586-25A4-4366-A0B8-110DBF2F549C}
+		{A36BD118-8AFE-4557-AC3E-6EE7F1554F2D} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{52DD04BF-47D9-456D-BDE4-3E7DDEF6060D} = {1AC5093A-27A9-433E-AD7E-2424A747F7CD}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {96DF3A5B-15F6-48D3-936A-9C9EC08E3EBB}

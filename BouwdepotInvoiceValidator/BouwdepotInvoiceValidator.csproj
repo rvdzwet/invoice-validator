@@ -20,8 +20,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BouwdepotInvoiceValidator.Domain\BouwdepotInvoiceValidator.Domain.csproj" />
-    <ProjectReference Include="..\BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Gemini.csproj" />
+    <ProjectReference Include="..\BouwdepotInvoiceValidator.Domain\BouwdepotInvoiceValidator.Domain.Services.csproj" />
+    <ProjectReference Include="..\BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Providers.Google.csproj" />
   </ItemGroup>
 
   <!-- 
