@@ -1,61 +1,71 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net9.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Content Include="Prompts\DocumentAnalysis\document-type-verification-images.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\DocumentAnalysis\document-type-verification.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\DocumentAnalysis\fraud-detection.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\DocumentAnalysis\line-item-analysis.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\DocumentAnalysis\multi-modal-home-improvement.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\InvoiceExtraction\invoice-header.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\InvoiceExtraction\invoice-line-items.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-    <Content Include="Prompts\InvoiceExtraction\invoice-parties.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-    </Content>
-  </ItemGroup>
+	<ItemGroup>
+		<Content Include="Prompts\ComprehensiveDocumentIntelligence.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\DocumentAnalysis\document-type-verification-images.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\DocumentAnalysis\document-type-verification.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\DocumentAnalysis\fraud-detection.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\DocumentAnalysis\line-item-analysis.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\DocumentAnalysis\multi-modal-home-improvement.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\InvoiceExtraction\invoice-header.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\InvoiceExtraction\invoice-line-items.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\InvoiceExtraction\invoice-parties.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.3" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.3" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.3" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\BouwdepotInvoiceValidator.Domain.Models\BouwdepotInvoiceValidator.Domain.Models.csproj" />
-    <ProjectReference Include="..\BouwdepotValidation.Infrastructure\BouwdepotValidationValidator.Infrastructure.Abstractions.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<Page Include="Prompts\ComprehensiveDocumentIntelligence.json" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\BouwdepotInvoiceValidator.Domain.Models\BouwdepotInvoiceValidator.Domain.Models.csproj" />
+		<ProjectReference Include="..\BouwdepotValidation.Infrastructure\BouwdepotValidationValidator.Infrastructure.Abstractions.csproj" />
+	</ItemGroup>
 
 </Project>

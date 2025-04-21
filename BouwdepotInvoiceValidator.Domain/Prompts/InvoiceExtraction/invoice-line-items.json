@@ -22,7 +22,7 @@
       "Extract any additional notes or important information.",
       "Provide an overall confidence score (0.0-1.0) for the extracted line items and payment details."
     ],
-    "outputFormat": "Respond with a JSON object in the following format: {\n  \"lineItems\": [\n    {\n      \"description\": \"Item description\",\n      \"quantity\": 1,\n      \"unitPrice\": 100.00,\n      \"totalPrice\": 100.00\n    }\n  ],\n  \"paymentTerms\": \"Payment terms\",\n  \"paymentMethod\": \"Payment method\",\n  \"paymentReference\": \"Payment reference number\",\n  \"notes\": \"Any additional important information\",\n  \"confidence\": 0.0-1.0\n}"
+    "outputFormat": "{\"lineItems\": [{\"description\": \"Item description\", \"quantity\": 1, \"unitPrice\": 100.00, \"totalPrice\": 100.00}], \"paymentTerms\": \"Payment terms\", \"paymentMethod\": \"Payment method\", \"paymentReference\": \"Payment reference number\", \"notes\": \"Any additional important information\", \"confidence\": 0.0-1.0}"
   },
   "examples": []
 }

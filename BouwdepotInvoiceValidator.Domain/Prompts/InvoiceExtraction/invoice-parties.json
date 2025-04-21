@@ -17,7 +17,7 @@
       "- Customer name",
       "- Customer address"
     ],
-    "outputFormat": "Respond with a JSON object in the following format: {\n  \"vendorName\": \"Vendor name\",\n  \"vendorAddress\": \"Vendor address\",\n  \"vendorContact\": \"Vendor contact info\",\n  \"customerName\": \"Customer name\",\n  \"customerAddress\": \"Customer address\"\n}"
+    "outputFormat": "{\"vendorName\": \"Vendor name\", \"vendorAddress\": \"Vendor address\", \"vendorContact\": \"Vendor contact info\", \"customerName\": \"Customer name\", \"customerAddress\": \"Customer address\"}"
   },
   "examples": []
 }

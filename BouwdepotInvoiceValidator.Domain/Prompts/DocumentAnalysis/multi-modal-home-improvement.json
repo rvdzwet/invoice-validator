@@ -17,7 +17,7 @@
       "Provide a confidence score (0.0-1.0) for your assessment of each major line item.",
       "Calculate the total eligible amount for Bouwdepot financing."
     ],
-    "outputFormat": "Respond with a JSON object in the following format: {\n  \"isHomeImprovement\": true/false,\n  \"eligibleCategories\": [\"Category1\", \"Category2\"],\n  \"lineItemAssessment\": [\n    {\n      \"description\": \"Item description\",\n      \"isEligible\": true/false,\n      \"category\": \"Category\",\n      \"confidence\": 0.0-1.0,\n      \"reason\": \"Reason for eligibility decision\"\n    }\n  ],\n  \"totalEligibleAmount\": 1234.56,\n  \"totalIneligibleAmount\": 123.45,\n  \"overallConfidence\": 0.0-1.0\n}"
+    "outputFormat": "{\"isHomeImprovement\": true/false, \"eligibleCategories\": [\"Category1\", \"Category2\"], \"lineItemAssessment\": [{\"description\": \"Item description\", \"isEligible\": true/false, \"category\": \"Category\", \"confidence\": 0.0-1.0, \"reason\": \"Reason for eligibility decision\"}], \"totalEligibleAmount\": 1234.56, \"totalIneligibleAmount\": 123.45, \"overallConfidence\": 0.0-1.0}"
   },
   "examples": []
 }

@@ -1,0 +1,248 @@
+{
+  "metadata": {
+    "name": "ComprehensiveDocumentIntelligence",
+    "version": "1.0",
+    "description": "Combined prompt for in-depth document analysis (language, sentiment, topic, entities) and document type identification (invoice, etc.).",
+    "lastModified": "2025-04-07",
+    "author": "AI Integration Team"
+  },
+  "template": {
+    "role": "You are a sophisticated document intelligence expert capable of performing detailed text analysis (language, sentiment, topics, entities) and classifying document types (invoice, quote, receipt, etc.).",
+    "task": "Analyze the provided document text to determine its language, sentiment, primary topics, and key entities, AND identify the type of the provided document (e.g., invoice, quote, receipt, other).",
+    "instructions": [
+      "**Part 1: General Document Analysis**",
+      "1. **Language Identification:** Analyze the text for characteristic linguistic features (vocabulary, grammar, syntax, common words, diacritics) to identify the primary language. Provide a confidence score (0-100).",
+      "2. **Sentiment Analysis:** Determine the overall sentiment expressed in the document (e.g., positive, negative, neutral, mixed). Provide a sentiment label and a confidence score (0-100) for each sentiment category.",
+      "3. **Topic Identification:** Identify the main topics or themes discussed in the document. Provide a list of relevant topics with associated confidence scores (0-100) for each topic.",
+      "4. **Key Entity Recognition:** Identify and categorize key entities mentioned in the document (e.g., persons, organizations, locations, dates, numbers, products). Provide a list of entities with their types and confidence scores (0-100).",
+      "5. **Contextual Understanding:** Consider the context of the document when performing all analyses. For example, a document containing financial terms might influence topic identification.",
+      "6. **Explanation:** For each analysis (language, sentiment, topics, entities), provide a brief explanation of the reasoning behind your determination.",
+      "",
+      "**Part 2: Document Type Identification**",
+      "7. Identify key document markers:",
+      "   - For invoices: invoice number, date, due date, total amount, tax details, payment terms, line items.",
+      "   - For quotes: validity period, estimated costs, terms.",
+      "   - For receipts: payment confirmation, transaction date, merchant details.",
+      "8. Analyze the document structure, looking for sections typical of invoices (header with invoice details, body with line items, footer with totals and payment information), quotes, or receipts.",
+      "9. Check for document-specific terminology such as 'Invoice', 'Quotation', 'Receipt', 'Bill to', 'Due date', 'Payment terms', etc.",
+      "10. If the document contains vendor name '{vendorName}', consider this in your analysis.",
+      "11. Provide a classification for the document type.",
+      "12. Provide a confidence score (0-100) for your document type classification.",
+      "13. Provide an explanation for your document type classification.",
+      "",
+      "**Part 3: Output Aggregation**",
+      "14. Present all analysis results in a structured JSON format as specified in the `outputFormat`."
+    ],
+    "outputFormat": "{ \"language\": { \"name\": \"en\", \"confidence\": 98, \"explanation\": \"The document uses predominantly English vocabulary and grammatical structures.\" }, \"sentiment\": { \"overall\": \"positive\", \"positive\": 90, \"negative\": 5, \"neutral\": 5, \"explanation\": \"The text expresses a generally positive tone through the use of words like 'excellent' and 'great service'.\" }, \"topics\": [ { \"topic\": \"customer service\", \"confidence\": 85, \"explanation\": \"The document discusses interactions between a customer and a service provider.\" }, { \"topic\": \"product review\", \"confidence\": 75, \"explanation\": \"The mention of 'product quality' and 'recommend' suggests a review context.\" } ], \"entities\": [ { \"entity\": \"John Doe\", \"type\": \"PERSON\", \"confidence\": 95 }, { \"entity\": \"Acme Corp\", \"type\": \"ORGANIZATION\", \"confidence\": 92 }, { \"entity\": \"yesterday\", \"type\": \"DATE\", \"confidence\": 88 } ], \"documentType\": { \"documentType\": \"invoice\", \"confidence\": 95, \"explanation\": \"This document contains an invoice number, itemized list of products/services with prices, tax calculations, and payment terms, which are all characteristic of an invoice.\" } }"
+  },
+  "examples": [
+    {
+      "input": "I had an excellent experience with Acme Corp yesterday. John Doe provided great service, and the product quality was outstanding. I would highly recommend them!",
+      "output": {
+        "language": {
+          "name": "en",
+          "confidence": 99,
+          "explanation": "The text is clearly in English, using standard English vocabulary and sentence structure."
+        },
+        "sentiment": {
+          "overall": "positive",
+          "positive": 95,
+          "negative": 2,
+          "neutral": 3,
+          "explanation": "The presence of strong positive words like 'excellent', 'great', and 'outstanding' indicates a positive sentiment."
+        },
+        "topics": [
+          {
+            "topic": "customer service",
+            "confidence": 90,
+            "explanation": "The text explicitly mentions 'service' provided by an individual."
+          },
+          {
+            "topic": "product review",
+            "confidence": 85,
+            "explanation": "The phrase 'product quality was outstanding' suggests a review or feedback about a product."
+          },
+          {
+            "topic": "recommendation",
+            "confidence": 70,
+            "explanation": "The statement 'I would highly recommend them!' clearly indicates a positive recommendation."
+          }
+        ],
+        "entities": [
+          {
+            "entity": "Acme Corp",
+            "type": "ORGANIZATION",
+            "confidence": 98
+          },
+          {
+            "entity": "John Doe",
+            "type": "PERSON",
+            "confidence": 96
+          },
+          {
+            "entity": "yesterday",
+            "type": "DATE",
+            "confidence": 92
+          }
+        ],
+        "documentType": {
+          "documentType": "feedback",
+          "confidence": 90,
+          "explanation": "This document appears to be customer feedback and does not contain the typical markers of an invoice, quote, or receipt."
+        }
+      }
+    },
+    {
+      "input": "La reunión de hoy fue muy decepcionante. No se tomaron decisiones importantes y la presentación fue confusa.",
+      "output": {
+        "language": {
+          "name": "es",
+          "confidence": 98,
+          "explanation": "The text uses Spanish vocabulary and grammatical structures (e.g., 'la reunión', 'fue', 'decepcionante')."
+        },
+        "sentiment": {
+          "overall": "negative",
+          "positive": 3,
+          "negative": 92,
+          "neutral": 5,
+          "explanation": "Words like 'decepcionante' (disappointing) and 'confusa' (confusing) indicate a negative sentiment."
+        },
+        "topics": [
+          {
+            "topic": "meeting",
+            "confidence": 95,
+            "explanation": "The text explicitly mentions 'la reunión' (the meeting)."
+          },
+          {
+            "topic": "decision making",
+            "confidence": 70,
+            "explanation": "The phrase 'No se tomaron decisiones importantes' (No important decisions were made) relates to decision making."
+          },
+          {
+            "topic": "presentation quality",
+            "confidence": 65,
+            "explanation": "The statement 'la presentación fue confusa' (the presentation was confusing) discusses the quality of a presentation."
+          }
+        ],
+        "entities": [
+          {
+            "entity": "hoy",
+            "type": "DATE",
+            "confidence": 85
+          }
+        ],
+        "documentType": {
+          "documentType": "meeting summary/feedback",
+          "confidence": 92,
+          "explanation": "This document appears to be a summary or feedback about a meeting and does not contain the typical markers of an invoice, quote, or receipt."
+        }
+      }
+    },
+    {
+      "input": "Document text containing: INVOICE #12345, Date: 2025-03-15, Due: 2025-04-15, Bill To: ABC Corp, Items: 1. Consulting Services - €500, 2. Software License - €1200, Subtotal: €1700, Tax (21%): €357, Total: €2057, Payment Terms: Net 30",
+      "output": {
+        "language": {
+          "name": "en",
+          "confidence": 95,
+          "explanation": "The document contains English terms and formatting common in business documents."
+        },
+        "sentiment": {
+          "overall": "neutral",
+          "positive": 10,
+          "negative": 5,
+          "neutral": 85,
+          "explanation": "The document primarily presents factual financial information without strong positive or negative language."
+        },
+        "topics": [
+          {
+            "topic": "invoicing",
+            "confidence": 98,
+            "explanation": "The presence of 'INVOICE', invoice number, itemized costs, and payment terms strongly indicates invoicing."
+          },
+          {
+            "topic": "business transactions",
+            "confidence": 88,
+            "explanation": "The document details a financial transaction between parties."
+          },
+          {
+            "topic": "financial services",
+            "confidence": 75,
+            "explanation": "The mention of 'Consulting Services' suggests a financial or professional service."
+          }
+        ],
+        "entities": [
+          {
+            "entity": "INVOICE #12345",
+            "type": "OTHER",
+            "confidence": 97
+          },
+          {
+            "entity": "2025-03-15",
+            "type": "DATE",
+            "confidence": 95
+          },
+          {
+            "entity": "2025-04-15",
+            "type": "DATE",
+            "confidence": 95
+          },
+          {
+            "entity": "ABC Corp",
+            "type": "ORGANIZATION",
+            "confidence": 96
+          },
+          {
+            "entity": "Consulting Services",
+            "type": "PRODUCT",
+            "confidence": 85
+          },
+          {
+            "entity": "€500",
+            "type": "MONEY",
+            "confidence": 92
+          },
+          {
+            "entity": "Software License",
+            "type": "PRODUCT",
+            "confidence": 88
+          },
+          {
+            "entity": "€1200",
+            "type": "MONEY",
+            "confidence": 93
+          },
+          {
+            "entity": "€1700",
+            "type": "MONEY",
+            "confidence": 94
+          },
+          {
+            "entity": "21%",
+            "type": "NUMBER",
+            "confidence": 90
+          },
+          {
+            "entity": "€357",
+            "type": "MONEY",
+            "confidence": 93
+          },
+          {
+            "entity": "€2057",
+            "type": "MONEY",
+            "confidence": 95
+          },
+          {
+            "entity": "Net 30",
+            "type": "OTHER",
+            "confidence": 90
+          }
+        ],
+        "documentType": {
+          "documentType": "invoice",
+          "confidence": 98,
+          "explanation": "This document clearly contains the key indicators of an invoice, including an invoice number, dates, billing information, itemized costs, tax details, total amount, and payment terms."
+        }
+      }
+    }
+  ]
+}

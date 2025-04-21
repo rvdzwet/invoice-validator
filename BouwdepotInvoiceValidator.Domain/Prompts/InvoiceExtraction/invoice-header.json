@@ -18,7 +18,7 @@
       "Tax/VAT amount (numeric value only)",
       "Currency"
     ],
-    "outputFormat": "Respond with a JSON object in the following format: {\n  \"invoiceNumber\": \"The invoice number\",\n  \"invoiceDate\": \"YYYY-MM-DD\",\n  \"dueDate\": \"YYYY-MM-DD\",\n  \"totalAmount\": 123.45,\n  \"taxAmount\": 23.45,\n  \"currency\": \"EUR\"\n}"
+    "outputFormat": "{\"invoiceNumber\": \"The invoice number\", \"invoiceDate\": \"YYYY-MM-DD\", \"dueDate\": \"YYYY-MM-DD\", \"totalAmount\": 123.45, \"taxAmount\": 23.45, \"currency\": \"EUR\"}"
   },
   "examples": []
 }

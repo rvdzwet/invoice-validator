@@ -1,4 +1,5 @@
 using BouwdepotInvoiceValidator.Domain.Models;
+using BouwdepotInvoiceValidator.Domain.Models.AdvancedDocumentAnalysis;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
 {
@@ -16,16 +17,6 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// Information about the input document
         /// </summary>
         public InputDocumentInfo InputDocument { get; set; }
-
-        /// <summary>
-        /// Detected language of the document
-        /// </summary>
-        public string DetectedLanguage { get; set; }
-
-        /// <summary>
-        /// Confidence in the language detection (0.0-1.0)
-        /// </summary>
-        public double LanguageDetectionConfidence { get; set; }
 
         /// <summary>
         /// Extracted invoice data
@@ -66,6 +57,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// List of validation results
         /// </summary>
         public List<RuleValidationResult> ValidationResults { get; } = new List<RuleValidationResult>();
+        public LanguageAnalysis Language { get; internal set; }
 
         /// <summary>
         /// Adds a processing step to the context

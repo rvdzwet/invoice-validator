@@ -5,16 +5,20 @@ using System.Text.Json;
 using System.Text;
 using System.Diagnostics;
 using static BouwdepotInvoiceValidator.Domain.Services.InvoiceValidationHelpers;
+using BouwdepotInvoiceValidator.Domain.Services.Services;
+using BouwdepotInvoiceValidator.Domain.Models.AdvancedDocumentAnalysis;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
 {
     /// <summary>
     /// Main service for validating invoices using AI-powered analysis
     /// </summary>
-    public class InvoiceValidationService : IInvoiceValidationService
+    internal class InvoiceValidationService : IInvoiceValidationService
     {
         private readonly ILogger<InvoiceValidationService> _logger;
         private readonly ILLMProvider _llmProvider;
+        private readonly PromptService _promptService;
+        private readonly IPdfToImageConverter _pdfToImageConverter;
         private readonly string _promptsBasePath;
 
         /// <summary>
@@ -22,10 +26,14 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// </summary>
         public InvoiceValidationService(
             ILogger<InvoiceValidationService> logger,
-            ILLMProvider llmProvider)
+            ILLMProvider llmProvider,
+            PromptService promptService,
+            IPdfToImageConverter pdfToImageConverter)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
+            _promptService = promptService;
+            _pdfToImageConverter = pdfToImageConverter;
             _promptsBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts");
         }
 
@@ -34,7 +42,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             _logger.LogInformation("Starting invoice validation for file: {FileName}", fileName);
             var stopwatch = Stopwatch.StartNew();
-            
+
             try
             {
                 // Create a new analysis context
@@ -89,7 +97,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
 
                 // Step 6: Generate audit report
                 await GenerateAuditReportAsync(context);
-                
+
                 // Add final processing step
                 context.AddProcessingStep("CompleteAnalysis",
                     "Invoice analysis process completed",
@@ -123,15 +131,17 @@ namespace BouwdepotInvoiceValidator.Domain.Services
 
             try
             {
-                // For now, we'll assume Dutch as the default language
-                // In a real implementation, you would use a language detection service or LLM
-                context.DetectedLanguage = "nl";
-                context.LanguageDetectionConfidence = 0.95;
+                //await _pdfToImageConverter.ConvertPdfPageToImageAsync(fileStream, "D:/temp", 1, 300, "jpeg");
 
-                context.AddProcessingStep("DetectLanguage", 
-                    $"Detected language: {context.DetectedLanguage} (confidence: {context.LanguageDetectionConfidence:P0})", 
+                var prompt = _promptService.GetPrompt("ComprehensiveDocumentIntelligence").Render();
+                var analysisResult = await _llmProvider.SendMultimodalStructuredPromptAsync<AdvancedDocumentAnalysisOutput>(prompt, [fileStream], [context.InputDocument.ContentType]);
+
+                context.Language = analysisResult.Language;
+
+                context.AddProcessingStep("DetectLanguage",
+                    $"Detected language: {context.Language.Name} (confidence: {context.Language.Confidence:P0}, explanation: {context.Language.Explanation})",
                     ProcessingStepStatus.Success);
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro", "1.0", "LanguageDetection", 100);
             }
             catch (Exception ex)
@@ -155,16 +165,15 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             {
                 // Load the document type verification prompt
                 var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/document-type-verification.json");
-                
+
                 // Create a request object with empty properties (not used in this prompt)
                 var request = new { };
-                
+
                 // Define the response type
-                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<object, DocumentTypeVerificationResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
+                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<DocumentTypeVerificationResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
                     string.Join("\n", promptTemplate.template.instructions),
-                    request,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -172,24 +181,24 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 // Update context based on response
                 if (response.isInvoice)
                 {
-                    context.AddProcessingStep("VerifyDocumentType", 
-                        $"Document verified as invoice (confidence: {response.confidence}%)", 
+                    context.AddProcessingStep("VerifyDocumentType",
+                        $"Document verified as invoice (confidence: {response.confidence}%)",
                         ProcessingStepStatus.Success);
                 }
                 else
                 {
-                    context.AddProcessingStep("VerifyDocumentType", 
-                        $"Document is not an invoice. Detected as: {response.documentType}", 
+                    context.AddProcessingStep("VerifyDocumentType",
+                        $"Document is not an invoice. Detected as: {response.documentType}",
                         ProcessingStepStatus.Warning);
-                    
-                    context.AddIssue("InvalidDocumentType", 
-                        $"The document appears to be a {response.documentType}, not an invoice. {response.explanation}", 
+
+                    context.AddIssue("InvalidDocumentType",
+                        $"The document appears to be a {response.documentType}, not an invoice. {response.explanation}",
                         IssueSeverity.Error);
-                    
+
                     context.OverallOutcome = ValidationOutcome.Invalid;
                     context.OverallOutcomeSummary = $"Document is not a valid invoice. It appears to be a {response.documentType}.";
                 }
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "DocumentTypeVerification", 500);
             }
             catch (Exception ex)
@@ -229,10 +238,10 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 // Extract line items
                 await ExtractInvoiceLineItemsAsync(context, fileStream);
 
-                context.AddProcessingStep("ExtractInvoiceStructure", 
+                context.AddProcessingStep("ExtractInvoiceStructure",
                     $"Successfully extracted invoice data: {context.ExtractedInvoice.InvoiceNumber}, " +
                     $"Amount: {context.ExtractedInvoice.TotalAmount} {context.ExtractedInvoice.Currency}, " +
-                    $"Vendor: {context.ExtractedInvoice.VendorName}", 
+                    $"Vendor: {context.ExtractedInvoice.VendorName}",
                     ProcessingStepStatus.Success);
             }
             catch (Exception ex)
@@ -252,14 +261,13 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             try
             {
                 var promptTemplate = await LoadPromptTemplateAsync("InvoiceExtraction/invoice-header.json");
-                
+
                 var request = new { };
-                
-                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<object, InvoiceHeaderResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
+
+                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<InvoiceHeaderResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
                     string.Join("\n", promptTemplate.template.instructions),
-                    request,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -271,7 +279,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 context.ExtractedInvoice.TotalAmount = response.totalAmount;
                 context.ExtractedInvoice.VatAmount = response.taxAmount;
                 context.ExtractedInvoice.Currency = response.currency;
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "InvoiceHeaderExtraction", 500);
             }
             catch (Exception ex)
@@ -290,14 +298,13 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             try
             {
                 var promptTemplate = await LoadPromptTemplateAsync("InvoiceExtraction/invoice-parties.json");
-                
+
                 var request = new { };
-                
-                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<object, InvoicePartiesResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
+
+                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<InvoicePartiesResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
                     string.Join("\n", promptTemplate.template.instructions),
-                    request,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -305,7 +312,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 // Update invoice with parties information
                 context.ExtractedInvoice.VendorName = response.vendorName;
                 context.ExtractedInvoice.VendorAddress = response.vendorAddress;
-                
+
                 // Extract KvK and BTW numbers from vendor contact if available
                 if (!string.IsNullOrEmpty(response.vendorContact))
                 {
@@ -317,8 +324,8 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                             context.ExtractedInvoice.VendorKvkNumber = kvkMatch.Groups[1].Value;
                         }
                     }
-                    
-                    if (response.vendorContact.Contains("BTW", StringComparison.OrdinalIgnoreCase) || 
+
+                    if (response.vendorContact.Contains("BTW", StringComparison.OrdinalIgnoreCase) ||
                         response.vendorContact.Contains("VAT", StringComparison.OrdinalIgnoreCase))
                     {
                         var btwMatch = System.Text.RegularExpressions.Regex.Match(response.vendorContact, @"(BTW|VAT)[:\s]*([\w\d]+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
@@ -328,7 +335,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         }
                     }
                 }
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "InvoicePartiesExtraction", 500);
             }
             catch (Exception ex)
@@ -347,14 +354,13 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             try
             {
                 var promptTemplate = await LoadPromptTemplateAsync("InvoiceExtraction/invoice-line-items.json");
-                
+
                 var request = new { };
-                
-                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<object, InvoiceLineItemsResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
+
+                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<InvoiceLineItemsResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
                     string.Join("\n", promptTemplate.template.instructions),
-                    request,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -380,10 +386,10 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 {
                     PaymentReference = response.paymentReference ?? context.ExtractedInvoice.InvoiceNumber
                 };
-                
+
                 // Store raw text for later use
                 context.ExtractedInvoice.RawText = response.notes ?? string.Empty;
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "InvoiceLineItemsExtraction", 800);
             }
             catch (Exception ex)
@@ -405,18 +411,17 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             try
             {
                 var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/fraud-detection.json");
-                
+
                 // Replace vendor name placeholder with actual vendor name
-                var instructions = promptTemplate.template.instructions.Select(i => 
+                var instructions = promptTemplate.template.instructions.Select(i =>
                     i.Replace("{vendorName}", context.ExtractedInvoice.VendorName)).ToList();
-                
+
                 var request = new { };
-                
-                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<object, FraudDetectionResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
+
+                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<FraudDetectionResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
                     string.Join("\n", instructions),
-                    request,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -447,14 +452,14 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 // Update context based on fraud detection
                 if (response.possibleFraud && response.confidence > 0.7)
                 {
-                    context.AddProcessingStep("DetectFraud", 
-                        $"Detected potential fraud indicators with high confidence ({response.confidence:P0})", 
+                    context.AddProcessingStep("DetectFraud",
+                        $"Detected potential fraud indicators with high confidence ({response.confidence:P0})",
                         ProcessingStepStatus.Warning);
-                    
-                    context.AddIssue("PotentialFraud", 
-                        $"Potential fraud detected: {response.visualEvidence}", 
+
+                    context.AddIssue("PotentialFraud",
+                        $"Potential fraud detected: {response.visualEvidence}",
                         IssueSeverity.Warning);
-                    
+
                     if (context.OverallOutcome != ValidationOutcome.Invalid)
                     {
                         context.OverallOutcome = ValidationOutcome.NeedsReview;
@@ -463,11 +468,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 }
                 else
                 {
-                    context.AddProcessingStep("DetectFraud", 
-                        "No significant fraud indicators detected", 
+                    context.AddProcessingStep("DetectFraud",
+                        "No significant fraud indicators detected",
                         ProcessingStepStatus.Success);
                 }
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "FraudDetection", 800);
             }
             catch (Exception ex)
@@ -492,15 +497,15 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 // First analyze line items
                 await AnalyzeLineItemsAsync(context, fileStream);
                 fileStream.Position = 0;
-                
+
                 // Then perform multimodal home improvement analysis
                 await AnalyzeHomeImprovementAsync(context, fileStream);
-                
+
                 // Determine overall eligibility based on line item analysis
                 DetermineOverallEligibility(context);
-                
-                context.AddProcessingStep("ValidateBouwdepot", 
-                    $"Bouwdepot eligibility determined: {(context.OverallOutcome == ValidationOutcome.Valid ? "Eligible" : "Needs Review")}", 
+
+                context.AddProcessingStep("ValidateBouwdepot",
+                    $"Bouwdepot eligibility determined: {(context.OverallOutcome == ValidationOutcome.Valid ? "Eligible" : "Needs Review")}",
                     ProcessingStepStatus.Success);
             }
             catch (Exception ex)
@@ -520,7 +525,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             try
             {
                 var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/line-item-analysis.json");
-                
+
                 // Create a request object with line items
                 var request = new
                 {
@@ -532,12 +537,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         totalPrice = li.TotalPrice
                     }).ToList()
                 };
-                
-                var response = await _llmProvider.SendStructuredPromptAsync<object, LineItemAnalysisResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
-                    string.Join("\n", promptTemplate.template.instructions),
-                    request
+
+                var response = await _llmProvider.SendStructuredPromptAsync<LineItemAnalysisResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
+                    string.Join("\n", promptTemplate.template.instructions)
                 );
 
                 // Create rule validation result
@@ -550,7 +554,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     Severity = response.isHomeImprovement ? RuleSeverity.Info : RuleSeverity.Error,
                     Explanation = response.summary
                 };
-                
+
                 context.ValidationResults.Add(ruleResult);
 
                 // Update line items with analysis results
@@ -567,7 +571,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         }
                     }
                 }
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro", "1.0", "LineItemAnalysis", 1000);
             }
             catch (Exception ex)
@@ -586,7 +590,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             try
             {
                 var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/multi-modal-home-improvement.json");
-                
+
                 // Create a request object with invoice data
                 var request = new
                 {
@@ -605,12 +609,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         }).ToList()
                     }
                 };
-                
-                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<object, HomeImprovementResponse>(
-                    promptTemplate.template.role + "\n\n" + 
-                    promptTemplate.template.task + "\n\n" + 
+
+                var response = await _llmProvider.SendMultimodalStructuredPromptAsync<HomeImprovementResponse>(
+                    promptTemplate.template.role + "\n\n" +
+                    promptTemplate.template.task + "\n\n" +
                     string.Join("\n", promptTemplate.template.instructions),
-                    request,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -625,7 +628,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     Severity = response.isHomeImprovement ? RuleSeverity.Info : RuleSeverity.Error,
                     Explanation = $"Categories: {string.Join(", ", response.eligibleCategories ?? new List<string>())}"
                 };
-                
+
                 context.ValidationResults.Add(ruleResult);
 
                 // Update line items with assessment results
@@ -642,7 +645,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         }
                     }
                 }
-                
+
                 context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "HomeImprovementAnalysis", 1200);
             }
             catch (Exception ex)
@@ -660,7 +663,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             // Check if any validation rules failed
             bool anyRulesFailed = context.ValidationResults.Any(r => r.Result == RuleResult.Fail && r.Severity == RuleSeverity.Error);
-            
+
             // Check if there are any high-severity issues
             bool anyHighSeverityIssues = context.Issues.Any(i => i.Severity == IssueSeverity.Error);
 
@@ -690,12 +693,12 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             {
                 // In a real implementation, you would generate a detailed audit report
                 // For now, we'll just summarize the validation results
-                
+
                 var summary = new StringBuilder();
                 summary.AppendLine($"Invoice {context.ExtractedInvoice.InvoiceNumber} from {context.ExtractedInvoice.VendorName}");
                 summary.AppendLine($"Amount: {context.ExtractedInvoice.TotalAmount} {context.ExtractedInvoice.Currency}");
                 summary.AppendLine($"Validation outcome: {context.OverallOutcome}");
-                
+
                 if (context.ValidationResults.Any())
                 {
                     summary.AppendLine("Validation rules:");
@@ -704,7 +707,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         summary.AppendLine($"- {rule.RuleName}: {rule.Result} ({rule.Explanation})");
                     }
                 }
-                
+
                 if (context.Issues.Any())
                 {
                     summary.AppendLine("Issues:");
@@ -713,7 +716,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         summary.AppendLine($"- {issue.IssueType} ({issue.Severity}): {issue.Description}");
                     }
                 }
-                
+
                 if (context.FraudAnalysis?.Indicators.Any() == true)
                 {
                     summary.AppendLine("Fraud indicators:");
@@ -722,12 +725,12 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         summary.AppendLine($"- {indicator.Category}: {indicator.Description} (confidence: {indicator.Confidence:P0})");
                     }
                 }
-                
+
                 // Store the summary in the context
                 context.OverallOutcomeSummary = summary.ToString();
-                
-                context.AddProcessingStep("GenerateAuditReport", 
-                    "Comprehensive audit report generated", 
+
+                context.AddProcessingStep("GenerateAuditReport",
+                    "Comprehensive audit report generated",
                     ProcessingStepStatus.Success);
             }
             catch (Exception ex)
@@ -738,7 +741,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 throw;
             }
         }
-        
+
         #endregion
     }
 }

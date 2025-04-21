@@ -32,7 +32,7 @@
       "- Professional Services: Labor, design, inspection",
       "- Non-Home Improvement: Items not related to home improvement"
     ],
-    "outputFormat": "Respond with ONLY a JSON object in the following format: {\n  \"isHomeImprovement\": true/false,\n  \"confidence\": 0.0-1.0,\n  \"summary\": \"A general summary of what was purchased and the likely project\",\n  \"primaryPurpose\": \"The main purpose or project these items are for\",\n  \"categories\": [\"List of categories represented in the line items\"],\n  \"lineItemAnalysis\": [\n    {\n      \"description\": \"Original line item description\",\n      \"interpretedAs\": \"What this item actually is\",\n      \"category\": \"Home improvement category\",\n      \"isHomeImprovement\": true/false,\n      \"confidence\": 0.0-1.0,\n      \"notes\": \"Any additional notes about this item\"\n    }\n    // Repeat for each line item\n  ]\n}"
+    "outputFormat": "{\"isHomeImprovement\": true/false, \"confidence\": 0.0-1.0, \"summary\": \"A general summary of what was purchased and the likely project\", \"primaryPurpose\": \"The main purpose or project these items are for\", \"categories\": [\"List of categories represented in the line items\"], \"lineItemAnalysis\": [{\"description\": \"Original line item description\", \"interpretedAs\": \"What this item actually is\", \"category\": \"Home improvement category\", \"isHomeImprovement\": true/false, \"confidence\": 0.0-1.0, \"notes\": \"Any additional notes about this item\"}]}"
   },
   "examples": []
 }

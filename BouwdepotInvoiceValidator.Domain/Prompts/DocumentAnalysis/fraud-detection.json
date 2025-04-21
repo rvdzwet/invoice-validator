@@ -19,7 +19,7 @@
       "5. STAMP/SIGNATURE ANALYSIS: Visual assessment of any stamps or signatures",
       "Pay special attention to the vendor '{vendorName}' if present in the document."
     ],
-    "outputFormat": "Respond with ONLY a JSON object in the following format: {\n  \"possibleFraud\": true/false,\n  \"confidence\": 0.0-1.0,\n  \"visualEvidence\": \"Description of specific visual evidence supporting your conclusion\",\n  \"visualIndicators\": [\"List of specific visual fraud indicators detected\"]\n}"
+    "outputFormat": "{\"possibleFraud\": true/false, \"confidence\": 0.0-1.0, \"visualEvidence\": \"Description of specific visual evidence supporting your conclusion\", \"visualIndicators\": [\"List of specific visual fraud indicators detected\"]}"
   },
   "examples": []
 }

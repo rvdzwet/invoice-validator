@@ -16,12 +16,7 @@
       "4. If the document contains vendor name '{vendorName}', consider this in your analysis.",
       "5. Provide a confidence score (0-100) for your classification."
     ],
-    "outputFormat": {
-      "documentType": "invoice",
-      "isInvoice": true,
-      "confidence": 95,
-      "explanation": "This document contains an invoice number, itemized list of products/services with prices, tax calculations, and payment terms, which are all characteristic of an invoice."
-    }
+    "outputFormat": "{\"documentType\": \"invoice\", \"isInvoice\": true, \"confidence\": 95, \"explanation\": \"This document contains an invoice number, itemized list of products/services with prices, tax calculations, and payment terms, which are all characteristic of an invoice.\"}"
   },
   "examples": [
     {

@@ -237,107 +237,42 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
         }
 
         /// <inheritdoc/>
-        public async Task<TResponse> SendStructuredPromptAsync<TRequest, TResponse>(
-            string prompt,
-            TRequest requestObject) // No CancellationToken
-            where TRequest : class
+        public async Task<TResponse> SendStructuredPromptAsync<TResponse>(
+            string prompt) // No CancellationToken
             where TResponse : class, new() // Added 'new()' constraint back
         {
-            if (string.IsNullOrWhiteSpace(prompt)) throw new ArgumentNullException(nameof(prompt));
-            if (requestObject == null) throw new ArgumentNullException(nameof(requestObject));
+            var responseText = await SendTextPromptAsync(prompt);
 
-            string requestJson = JsonSerializer.Serialize(requestObject, _jsonSerializerOptions);
-            string fullPrompt = $"{prompt}\n\nInput data:\n```json\n{requestJson}\n```\n\nPlease provide the response formatted as a JSON object matching the expected structure.";
+            responseText = CleanJsonResponseText(responseText);
 
-            string modelName = _options.DefaultTextModel;
-            string apiUrl = GetApiUrl(modelName);
-            _logger.LogInformation("Sending structured prompt to Gemini API [{ModelName}] at {ApiUrl}", modelName, apiUrl);
-
-            var request = new GeminiRequest { Contents = new List<Content> { new Content { Parts = new List<Part> { new Part { Text = fullPrompt } } } } };
-
-            try
+            var structuredResponse = JsonSerializer.Deserialize<TResponse>(responseText, _jsonSerializerOptions);
+            if (structuredResponse == null)
             {
-                // Using CancellationToken.None for the internal async calls
-                HttpResponseMessage response = await _httpClient.PostAsJsonAsync(apiUrl, request, _jsonSerializerOptions, CancellationToken.None);
-                string responseText = await ProcessApiResponseAsync(response, CancellationToken.None); // Pass None
-                responseText = CleanJsonResponseText(responseText);
-
-                var structuredResponse = JsonSerializer.Deserialize<TResponse>(responseText, _jsonSerializerOptions);
-                if (structuredResponse == null)
-                {
-                    _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", typeof(TResponse).Name, responseText);
-                    throw new InvalidOperationException($"Could not deserialize response into {typeof(TResponse).Name}.");
-                }
-                return structuredResponse;
+                _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", typeof(TResponse).Name, responseText);
+                throw new InvalidOperationException($"Could not deserialize response into {typeof(TResponse).Name}.");
             }
-            catch (JsonException jsonEx) { _logger.LogError(jsonEx, "Failed to deserialize structured response from Gemini API text output into {ResponseType}. Ensure the model returned valid JSON.", typeof(TResponse).Name); throw new InvalidOperationException($"Failed to deserialize response into {typeof(TResponse).Name}.", jsonEx); }
-            catch (HttpRequestException httpEx) { _logger.LogError(httpEx, "HTTP error sending structured prompt to Gemini API."); throw; }
-            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || ex.CancellationToken == CancellationToken.None)
-            {
-                _logger.LogError(ex, "Gemini API call timed out after {Timeout} seconds (TaskCanceledException).", _options.TimeoutSeconds);
-                throw new TimeoutException($"Gemini API call timed out after {_options.TimeoutSeconds} seconds.", ex);
-            }
-            catch (Exception ex) { _logger.LogError(ex, "Unexpected error sending structured prompt to Gemini API."); throw; }
+            return structuredResponse;
         }
 
 
         /// <inheritdoc/>
-        public async Task<TResponse> SendMultimodalStructuredPromptAsync<TRequest, TResponse>(
+        public async Task<TResponse> SendMultimodalStructuredPromptAsync<TResponse>(
             string prompt,
-            TRequest requestObject,
             IEnumerable<Stream> imageStreams,
             IEnumerable<string> mimeTypes) // No CancellationToken
-            where TRequest : class
             where TResponse : class, new() // Added 'new()' constraint back
         {
-            if (string.IsNullOrWhiteSpace(prompt)) throw new ArgumentNullException(nameof(prompt));
-            if (requestObject == null) throw new ArgumentNullException(nameof(requestObject));
-            if (imageStreams == null) throw new ArgumentNullException(nameof(imageStreams));
-            if (mimeTypes == null) throw new ArgumentNullException(nameof(mimeTypes));
+            var responseText = await SendMultimodalPromptAsync(prompt, imageStreams, mimeTypes);
 
-            var imageStreamList = imageStreams.ToList();
-            var mimeTypeList = mimeTypes.ToList();
+            responseText = CleanJsonResponseText(responseText);
 
-            if (imageStreamList.Count != mimeTypeList.Count) throw new ArgumentException("Number of image streams must match number of MIME types.");
-
-            string modelName = _options.DefaultMultimodalModel;
-            string apiUrl = GetApiUrl(modelName);
-            _logger.LogInformation("Sending multimodal structured prompt ({ImageCount} images) to Gemini API [{ModelName}] at {ApiUrl}", imageStreamList.Count, modelName, apiUrl);
-
-            string requestJson = JsonSerializer.Serialize(requestObject, _jsonSerializerOptions);
-            string fullPrompt = $"{prompt}\n\nInput data:\n```json\n{requestJson}\n```\n\nPlease provide the response formatted as a JSON object matching the expected structure.";
-
-            var parts = new List<Part> { new Part { Text = fullPrompt } };
-            for (int i = 0; i < imageStreamList.Count; i++)
+            var structuredResponse = JsonSerializer.Deserialize<TResponse>(responseText, _jsonSerializerOptions);
+            if (structuredResponse == null)
             {
-                string base64Image = await ConvertStreamToBase64Async(imageStreamList[i]); // No token
-                parts.Add(new Part { InlineData = new InlineData { MimeType = mimeTypeList[i], Data = base64Image } });
+                _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", typeof(TResponse).Name, responseText);
+                throw new InvalidOperationException($"Could not deserialize response into {typeof(TResponse).Name}.");
             }
-            var request = new GeminiRequest { Contents = new List<Content> { new Content { Parts = parts } } };
-
-            try
-            {
-                // Using CancellationToken.None for the internal async calls
-                HttpResponseMessage response = await _httpClient.PostAsJsonAsync(apiUrl, request, _jsonSerializerOptions, CancellationToken.None);
-                string responseText = await ProcessApiResponseAsync(response, CancellationToken.None); // Pass None
-                responseText = CleanJsonResponseText(responseText);
-
-                var structuredResponse = JsonSerializer.Deserialize<TResponse>(responseText, _jsonSerializerOptions);
-                if (structuredResponse == null)
-                {
-                    _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", typeof(TResponse).Name, responseText);
-                    throw new InvalidOperationException($"Could not deserialize response into {typeof(TResponse).Name}.");
-                }
-                return structuredResponse;
-            }
-            catch (JsonException jsonEx) { _logger.LogError(jsonEx, "Failed to deserialize structured response from Gemini API text output into {ResponseType}. Ensure the model returned valid JSON.", typeof(TResponse).Name); throw new InvalidOperationException($"Failed to deserialize response into {typeof(TResponse).Name}.", jsonEx); }
-            catch (HttpRequestException httpEx) { _logger.LogError(httpEx, "HTTP error sending multimodal structured prompt to Gemini API."); throw; }
-            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || ex.CancellationToken == CancellationToken.None)
-            {
-                _logger.LogError(ex, "Gemini API call timed out after {Timeout} seconds (TaskCanceledException).", _options.TimeoutSeconds);
-                throw new TimeoutException($"Gemini API call timed out after {_options.TimeoutSeconds} seconds.", ex);
-            }
-            catch (Exception ex) { _logger.LogError(ex, "Unexpected error sending multimodal structured prompt to Gemini API."); throw; }
+            return structuredResponse;
         }
     }
 }
