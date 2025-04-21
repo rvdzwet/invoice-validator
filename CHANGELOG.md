@@ -1,69 +1,98 @@
-# Changelog
+# Change Log
 
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [1.3.0] - 2025-04-21 - Construction Fund Withdrawal Proof Validator
 
-## [Unreleased]
+### Major Architectural Changes
 
-## [1.0.1] - 2025-04-06
+- **Refactored application to validate withdrawal proofs instead of just invoices:**
+  - Renamed key interfaces and services for better domain alignment
+  - Added support for multiple document types (invoices, receipts, quotations)
+  - Created comprehensive validation for construction fund withdrawal proofs
+  - Added new models for construction activities and withdrawal requests
 
-### Fixed
-- Fixed build errors in InvoiceValidationHelpers.cs
-- Updated MapToValidationResult method to match ValidationResult class properties
-- Fixed property names: Id -> ValidationId, ProcessingInfo -> Processing, InvoiceData -> Invoice
-- Fixed FraudAnalysis mapping to match ValidationResult class structure
+- **Enhanced construction fund validation:**
+  - Created structured activity classification by construction category
+  - Added support for identifying construction activities in documents
+  - Improved eligibility determination with detailed activity summaries
+  - Enhanced audit report generation with comprehensive validation details
 
-## [1.0.0] - 2025-04-06
+- **Added new interfaces and implementations:**
+  - Created `IWithdrawalProofValidationService` interface
+  - Implemented `WithdrawalProofValidationService` service
+  - Created `WithdrawalProofController` for API access
+  - Added `ConstructionActivity` model for activity classification
+  - Implemented `WithdrawalRequest` model for contextual requests
 
-### Added
-- Implemented comprehensive `InvoiceValidationService` using the `ILLMProvider` for construction fund invoice validation
-- Created `ValidationContext` class to maintain state throughout the validation process
-- Added `InvoiceValidationResponses` class for structured LLM responses
-- Created `InvoiceValidationHelpers` class for utility methods
-- Implemented a structured workflow with the following steps:
-  - Language detection
-  - Document type verification
-  - Invoice structure extraction (header, parties, line items)
-  - Fraud detection
-  - Bouwdepot eligibility validation
-  - Audit report generation
+- **Enhanced pipeline steps:**
+  - Updated `DocumentTypeVerificationStep` to accept multiple document types
+  - Improved `BouwdepotEligibilityStep` with detailed construction activity analysis
+  - Enhanced `AuditReportGenerationStep` with comprehensive construction activity reporting
+  - Added helper classes to improve code organization and maintainability
 
-### Changed
-- Updated all prompt templates to ensure they work effectively with the implementation
-- Added payment reference field to invoice-line-items.json
-- Updated all prompts with the current date
-- Ensured prompts match the expected response formats
+- **Enhanced audit reporting:**
+  - Generated detailed construction activity summaries by category
+  - Improved validation summaries with activity-based eligibility reasoning
+  - Enhanced audit trails with comprehensive construction context
 
-### Fixed
-- Improved context preservation across different prompts in the validation workflow
+## [1.2.0] - 2025-04-21 - Prompt Service Integration
 
-## [0.9.0] - 2025-04-05
+- Fixed prompt service integration with pipeline steps:
+  - Updated all pipeline steps to use the PromptService instead of loading prompt files directly
+  - Changed steps to use prompt metadata names instead of file paths
+  - Added proper dependency injection of PromptService in all steps
+  - Ensured consistent naming between prompt metadata and step references
+  - Eliminated errors caused by mismatched prompt paths and names
 
-### Added
-- Updated the README.md file to include a section on logging conventions.
+## [1.1.0] - 2025-04-21 - Conversation Context Preservation
 
-## [0.8.0] - 2025-04-01
+- Added conversation context preservation across LLM calls:
+  - Created ConversationContext class to maintain conversation history
+  - Updated ILLMProvider interface to support conversation history
+  - Modified GeminiClient to maintain and pass conversation history
+  - Updated ValidationPipeline to initialize and pass conversation context
+  - Enhanced API response with detailed validation information
+  - Improved LLM accuracy by providing context from previous steps
 
-### Added
-- Implemented Domain-Driven Design (DDD) architecture to better separate concerns
-- Created a clean domain layer with well-defined interfaces and models
-- Simplified the invoice analysis process with a streamlined pipeline approach
-- Improved error handling and logging throughout the application
-- Added comprehensive documentation to all interfaces and models
+## [1.0.0] - 2025-04-21 - Dynamic Schema Generation
 
-### Changed
-- Simplified the invoice analysis process by introducing a step-by-step pipeline
-- Created domain interfaces for AI services
-- Simplified API response models
+- Added dynamic JSON schema generation from POCO classes:
+  - Created custom attributes (PromptSchemaAttribute, PromptPropertyAttribute, PromptIgnoreAttribute) for annotating POCO classes
+  - Implemented JsonSchemaGenerator to generate JSON schemas from annotated classes
+  - Created DynamicPromptService to build prompts with dynamically generated schemas
+  - Updated DocumentStructureExtractionStep to use dynamic schemas for line items extraction
+  - Added VatRate property to LineItemResponse to match InvoiceLineItem model
+  - Ensures that prompt JSON output always matches POCO classes, preventing deserialization errors
 
-### Fixed
-- Fixed build errors by updating model classes to match service implementation
-- Added missing properties to TechnicalDetails class
-- Updated ProcessingStep property names to align with service usage
+## [0.9.0] - 2025-04-21 - Single Prompt Pipeline Architecture
 
-## [0.7.0] - 2025-03-15
+- Modified validation pipeline to ensure each step can only do one prompt:
+  - Updated IValidationPipelineStep interface to include prompt-related properties and methods
+  - Modified ValidationPipeline to handle prompt execution
+  - Updated ILLMProvider interface to support Type-based prompt execution
+  - Refactored all pipeline steps to comply with the new interface
+  - Improved adherence to SOLID principles with better separation of concerns
 
-### Changed
-- Refactored codebase to improve maintainability by splitting large model files into smaller, more focused files
+## [0.8.0] - 2025-04-21 - Pipeline Architecture and Receipt Support
+
+- Added support for receipt validation alongside invoices:
+  - Updated document-type-verification.json prompt to detect receipts
+  - Added isReceipt property to DocumentTypeVerificationResponse
+  - Modified validation logic to accept both invoices and receipts
+
+- Refactored validation service to use a builder pattern with pipeline steps:
+  - Created IValidationPipelineStep interface for individual validation steps
+  - Created IValidationPipeline interface for the validation pipeline
+  - Implemented ValidationPipeline to execute steps in order
+  - Split validation logic into separate pipeline steps:
+    - LanguageDetectionStep
+    - DocumentTypeVerificationStep
+    - DocumentStructureExtractionStep
+    - FraudDetectionStep
+    - BouwdepotEligibilityStep
+    - AuditReportGenerationStep
+  - Added DocumentType property to ValidationContext to track document type
+  - Renamed InvoiceValidationService to DocumentValidationService
+  - Updated ServiceCollectionExtensions to register pipeline components
+  - Removed PDF to image conversion logic (no longer needed)

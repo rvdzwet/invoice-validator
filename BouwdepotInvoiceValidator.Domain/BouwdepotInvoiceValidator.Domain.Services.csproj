@@ -7,6 +7,11 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+	  <None Remove="Prompts\DocumentAnalysis\language-detection.json" />
+	  <None Remove="Prompts\WithdrawalProofValidation\comprehensive-withdrawal-proof-validation.json" />
+	</ItemGroup>
+
+	<ItemGroup>
 		<Content Include="Prompts\ComprehensiveDocumentIntelligence.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
@@ -26,6 +31,9 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
 			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Prompts\DocumentAnalysis\language-detection.json">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</Content>
 		<Content Include="Prompts\DocumentAnalysis\line-item-analysis.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -61,6 +69,9 @@
 
 	<ItemGroup>
 		<Page Include="Prompts\ComprehensiveDocumentIntelligence.json" />
+		<Page Include="Prompts\WithdrawalProofValidation\comprehensive-withdrawal-proof-validation.json">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Page>
 	</ItemGroup>
 
 	<ItemGroup>

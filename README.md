@@ -1,8 +1,87 @@
-# Bouwdepot Invoice Validator
+# Construction Fund Withdrawal Proof Validator
 
-A comprehensive invoice validation system for Bouwdepot that uses AI to analyze and validate construction invoices.
+A comprehensive document validation system for construction fund (bouwdepot) withdrawals that uses AI to analyze and validate invoices, receipts, and quotations as proof for withdrawal requests.
 
 ## Recent Changes
+
+### Prompt Service Integration (April 21, 2025)
+
+- Fixed prompt service integration with pipeline steps:
+  - Updated all pipeline steps to use the PromptService instead of loading prompt files directly
+  - Changed steps to use prompt metadata names instead of file paths
+  - Added proper dependency injection of PromptService in all steps
+  - Ensured consistent naming between prompt metadata and step references
+  - Eliminated errors caused by mismatched prompt paths and names
+
+### Conversation Context Preservation (April 21, 2025)
+
+- Added conversation context preservation across LLM calls:
+  - Created ConversationContext class to maintain conversation history
+  - Updated ILLMProvider interface to support conversation history
+  - Modified GeminiClient to maintain and pass conversation history
+  - Updated ValidationPipeline to initialize and pass conversation context
+  - Enhanced API response with detailed validation information
+  - Improved LLM accuracy by providing context from previous steps
+
+### Enhanced API Response (April 21, 2025)
+
+- Enhanced API response with more detailed validation information:
+  - Added detailed processing steps with status, description, and timestamp
+  - Added detailed AI model usage information
+  - Added conversation history to the API response
+  - Updated pipeline steps to use the correct prompt template paths
+  - Improved transparency and auditability of the validation process
+
+### Dynamic Schema Generation (April 21, 2025)
+
+- Added dynamic JSON schema generation from POCO classes:
+  - Created custom attributes (PromptSchemaAttribute, PromptPropertyAttribute, PromptIgnoreAttribute) for annotating POCO classes
+  - Implemented JsonSchemaGenerator to generate JSON schemas from annotated classes
+  - Created DynamicPromptService to build prompts with dynamically generated schemas
+  - Updated DocumentStructureExtractionStep to use dynamic schemas for line items extraction
+  - Added VatRate property to LineItemResponse to match InvoiceLineItem model
+  - Ensures that prompt JSON output always matches POCO classes, preventing deserialization errors
+
+### Single Prompt Pipeline Architecture (April 21, 2025)
+
+- Modified validation pipeline to ensure each step can only do one prompt:
+  - Updated IValidationPipelineStep interface to include prompt-related properties and methods
+  - Modified ValidationPipeline to handle prompt execution
+  - Updated ILLMProvider interface to support Type-based prompt execution
+  - Refactored all pipeline steps to comply with the new interface
+  - Improved adherence to SOLID principles with better separation of concerns
+
+### Pipeline Architecture and Receipt Support (April 21, 2025)
+
+- Added support for receipt validation alongside invoices:
+  - Updated document-type-verification.json prompt to detect receipts
+  - Added isReceipt property to DocumentTypeVerificationResponse
+  - Modified validation logic to accept both invoices and receipts
+
+- Refactored validation service to use a builder pattern with pipeline steps:
+  - Created IValidationPipelineStep interface for individual validation steps
+  - Created IValidationPipeline interface for the validation pipeline
+  - Implemented ValidationPipeline to execute steps in order
+  - Split validation logic into separate pipeline steps:
+    - LanguageDetectionStep
+    - DocumentTypeVerificationStep
+    - DocumentStructureExtractionStep
+    - FraudDetectionStep
+    - BouwdepotEligibilityStep
+    - AuditReportGenerationStep
+  - Added DocumentType property to ValidationContext to track document type
+  - Renamed InvoiceValidationService to DocumentValidationService
+  - Updated ServiceCollectionExtensions to register pipeline components
+  - Removed PDF to image conversion logic (no longer needed)
+
+### Prompt Improvements (April 21, 2025)
+
+- Enhanced all prompt templates to ensure consistent JSON responses:
+  - Added explicit JSON formatting instructions to all prompts
+  - Added examples to prompts that were missing them
+  - Standardized JSON response format requirements across all prompts
+  - Created a dedicated language-detection.json prompt file
+  - Updated ComprehensiveDocumentIntelligence.json with clearer output formatting instructions
 
 ### Build Fix (April 6, 2025)
 
@@ -136,3 +215,75 @@ This refactoring follows SOLID principles, particularly the Single Responsibilit
 - Comprehensive audit reports
 - Vendor profiling and verification
 - Structured prompt template system for AI interactions
+
+## Dynamic Schema Generation
+
+The system now includes a powerful dynamic JSON schema generation feature that ensures prompt outputs always match the expected POCO classes:
+
+### Custom Attributes
+
+- **PromptSchemaAttribute**: Applied to classes to mark them for schema generation and provide a description.
+- **PromptPropertyAttribute**: Applied to properties to include them in the schema with descriptions and requirements.
+- **PromptIgnoreAttribute**: Applied to properties to exclude them from the schema.
+
+### How It Works
+
+1. POCO classes are annotated with the custom attributes to define their schema requirements.
+2. The `JsonSchemaGenerator` uses reflection to analyze these classes and generate JSON schemas.
+3. The `DynamicPromptService` combines these schemas with prompt templates to create comprehensive prompts.
+4. When the LLM processes these prompts, it returns JSON that precisely matches the POCO structure.
+5. This ensures successful deserialization and prevents errors during processing.
+
+### Benefits
+
+- **Consistency**: Ensures that LLM responses always match the expected data structure.
+- **Maintainability**: When POCO classes are updated, the schemas automatically update too.
+- **Reliability**: Reduces errors caused by mismatches between JSON output and POCO classes.
+- **Documentation**: The schema serves as self-documenting code for the expected data structure.
+
+## Prompt Structure and JSON Formatting
+
+All AI prompts in the system follow a standardized structure to ensure consistent and reliable responses:
+
+### Prompt Template Structure
+
+Each prompt template consists of:
+
+1. **Metadata**: Information about the prompt including name, version, description, last modified date, and author.
+2. **Template**: The core prompt content with:
+   - **Role**: Defines the AI's expertise and perspective
+   - **Task**: Clearly states what the AI needs to accomplish
+   - **Instructions**: Detailed steps for the AI to follow
+   - **Output Format**: Specifies the expected JSON response structure
+3. **Examples**: Sample inputs and expected outputs to guide the AI
+
+### JSON Response Requirements
+
+All prompts have been enhanced to ensure proper JSON formatting:
+
+- Every prompt includes explicit instructions to return valid JSON
+- Response fields are clearly defined with their expected data types
+- Numeric values must be returned as numbers without quotes
+- Boolean values must be returned as true/false without quotes
+- String values must be properly quoted
+- Arrays and objects must follow proper JSON syntax
+- Null values are used for missing information rather than empty strings
+
+### Available Prompt Templates
+
+The system includes specialized prompts for different aspects of invoice validation:
+
+- **Document Analysis**:
+  - `document-type-verification.json`: Determines if a document is an invoice
+  - `fraud-detection.json`: Detects visual signs of tampering or fraud
+  - `line-item-analysis.json`: Analyzes line items for home improvement relevance
+  - `multi-modal-home-improvement.json`: Validates eligibility for Bouwdepot financing
+  - `language-detection.json`: Identifies the primary language of the document
+
+- **Invoice Extraction**:
+  - `invoice-header.json`: Extracts invoice number, dates, and amounts
+  - `invoice-parties.json`: Extracts vendor and customer information
+  - `invoice-line-items.json`: Extracts line items and payment details
+
+- **Comprehensive Analysis**:
+  - `ComprehensiveDocumentIntelligence.json`: Performs full document analysis including language, sentiment, topics, entities, and document type

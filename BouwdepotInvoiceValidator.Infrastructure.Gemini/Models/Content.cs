@@ -7,8 +7,7 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models
         [JsonPropertyName("parts")]
         public List<Part> Parts { get; set; } = new List<Part>();
 
-        // Optional: Add Role ("user" or "model") if building conversational history
-        // [JsonPropertyName("role")]
-        // public string Role { get; set; } = "user";
+        [JsonPropertyName("role")]
+        public string Role { get; set; } = "user";
     }
 }

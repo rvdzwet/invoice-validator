@@ -30,10 +30,17 @@
       "12. Provide a confidence score (0-100) for your document type classification.",
       "13. Provide an explanation for your document type classification.",
       "",
-      "**Part 3: Output Aggregation**",
-      "14. Present all analysis results in a structured JSON format as specified in the `outputFormat`."
-    ],
-    "outputFormat": "{ \"language\": { \"name\": \"en\", \"confidence\": 98, \"explanation\": \"The document uses predominantly English vocabulary and grammatical structures.\" }, \"sentiment\": { \"overall\": \"positive\", \"positive\": 90, \"negative\": 5, \"neutral\": 5, \"explanation\": \"The text expresses a generally positive tone through the use of words like 'excellent' and 'great service'.\" }, \"topics\": [ { \"topic\": \"customer service\", \"confidence\": 85, \"explanation\": \"The document discusses interactions between a customer and a service provider.\" }, { \"topic\": \"product review\", \"confidence\": 75, \"explanation\": \"The mention of 'product quality' and 'recommend' suggests a review context.\" } ], \"entities\": [ { \"entity\": \"John Doe\", \"type\": \"PERSON\", \"confidence\": 95 }, { \"entity\": \"Acme Corp\", \"type\": \"ORGANIZATION\", \"confidence\": 92 }, { \"entity\": \"yesterday\", \"type\": \"DATE\", \"confidence\": 88 } ], \"documentType\": { \"documentType\": \"invoice\", \"confidence\": 95, \"explanation\": \"This document contains an invoice number, itemized list of products/services with prices, tax calculations, and payment terms, which are all characteristic of an invoice.\" } }"
+      "**Part 3: Output Formatting**",
+      "14. IMPORTANT: Your response MUST be a valid JSON object with the exact structure shown in the JSON schema.",
+      "15. Do not include any explanations, notes, or text outside of the JSON structure.",
+      "16. Ensure all fields are properly formatted according to their expected types:",
+      "    - String fields should contain text values",
+      "    - Numeric fields should contain numbers without quotes",
+      "    - Boolean fields should be true or false without quotes",
+      "    - Array fields should be properly formatted lists",
+      "    - Object fields should be properly nested JSON objects",
+      "17. Ensure the response is properly formatted JSON with no syntax errors."
+    ]
   },
   "examples": [
     {

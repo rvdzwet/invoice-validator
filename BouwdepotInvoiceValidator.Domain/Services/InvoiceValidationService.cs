@@ -7,6 +7,7 @@ using System.Diagnostics;
 using static BouwdepotInvoiceValidator.Domain.Services.InvoiceValidationHelpers;
 using BouwdepotInvoiceValidator.Domain.Services.Services;
 using BouwdepotInvoiceValidator.Domain.Models.AdvancedDocumentAnalysis;
+using BouwdepotInvoiceValidator.Domain.Services.Schema;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
 {
@@ -18,8 +19,8 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         private readonly ILogger<InvoiceValidationService> _logger;
         private readonly ILLMProvider _llmProvider;
         private readonly PromptService _promptService;
+        private readonly DynamicPromptService _dynamicPromptService;
         private readonly IPdfToImageConverter _pdfToImageConverter;
-        private readonly string _promptsBasePath;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="InvoiceValidationService"/> class.
@@ -28,13 +29,14 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             ILogger<InvoiceValidationService> logger,
             ILLMProvider llmProvider,
             PromptService promptService,
+            DynamicPromptService dynamicPromptService,
             IPdfToImageConverter pdfToImageConverter)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _llmProvider = llmProvider ?? throw new ArgumentNullException(nameof(llmProvider));
-            _promptService = promptService;
-            _pdfToImageConverter = pdfToImageConverter;
-            _promptsBasePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts");
+            _promptService = promptService ?? throw new ArgumentNullException(nameof(promptService));
+            _dynamicPromptService = dynamicPromptService ?? throw new ArgumentNullException(nameof(dynamicPromptService));
+            _pdfToImageConverter = pdfToImageConverter ?? throw new ArgumentNullException(nameof(pdfToImageConverter));
         }
 
         /// <inheritdoc/>
@@ -142,7 +144,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     $"Detected language: {context.Language.Name} (confidence: {context.Language.Confidence:P0}, explanation: {context.Language.Explanation})",
                     ProcessingStepStatus.Success);
 
-                context.AddAIModelUsage("Gemini-1.5-Pro", "1.0", "LanguageDetection", 100);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "LanguageDetection", 100);
             }
             catch (Exception ex)
             {
@@ -163,17 +165,12 @@ namespace BouwdepotInvoiceValidator.Domain.Services
 
             try
             {
-                // Load the document type verification prompt
-                var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/document-type-verification.json");
-
-                // Create a request object with empty properties (not used in this prompt)
-                var request = new { };
-
+                // Build the prompt with the dynamic schema
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<DocumentTypeVerificationResponse>("DocumentTypeVerification");
+                
                 // Define the response type
                 var response = await _llmProvider.SendMultimodalStructuredPromptAsync<DocumentTypeVerificationResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", promptTemplate.template.instructions),
+                    prompt,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -199,7 +196,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     context.OverallOutcomeSummary = $"Document is not a valid invoice. It appears to be a {response.documentType}.";
                 }
 
-                context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "DocumentTypeVerification", 500);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "DocumentTypeVerification", 500);
             }
             catch (Exception ex)
             {
@@ -260,14 +257,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             try
             {
-                var promptTemplate = await LoadPromptTemplateAsync("InvoiceExtraction/invoice-header.json");
-
-                var request = new { };
-
+                // Build the prompt with the dynamic schema
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<InvoiceHeaderResponse>("InvoiceHeaderExtraction");
+                
                 var response = await _llmProvider.SendMultimodalStructuredPromptAsync<InvoiceHeaderResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", promptTemplate.template.instructions),
+                    prompt,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -280,7 +274,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 context.ExtractedInvoice.VatAmount = response.taxAmount;
                 context.ExtractedInvoice.Currency = response.currency;
 
-                context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "InvoiceHeaderExtraction", 500);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "InvoiceHeaderExtraction", 500);
             }
             catch (Exception ex)
             {
@@ -297,14 +291,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             try
             {
-                var promptTemplate = await LoadPromptTemplateAsync("InvoiceExtraction/invoice-parties.json");
-
-                var request = new { };
-
+                // Build the prompt with the dynamic schema
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<InvoicePartiesResponse>("InvoicePartiesExtraction");
+                
                 var response = await _llmProvider.SendMultimodalStructuredPromptAsync<InvoicePartiesResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", promptTemplate.template.instructions),
+                    prompt,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -336,7 +327,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     }
                 }
 
-                context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "InvoicePartiesExtraction", 500);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "InvoicePartiesExtraction", 500);
             }
             catch (Exception ex)
             {
@@ -353,14 +344,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             try
             {
-                var promptTemplate = await LoadPromptTemplateAsync("InvoiceExtraction/invoice-line-items.json");
-
-                var request = new { };
-
+                // Build the prompt with the dynamic schema
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<InvoiceLineItemsResponse>("InvoiceLineItemsExtraction");
+                
                 var response = await _llmProvider.SendMultimodalStructuredPromptAsync<InvoiceLineItemsResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", promptTemplate.template.instructions),
+                    prompt,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -390,7 +378,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 // Store raw text for later use
                 context.ExtractedInvoice.RawText = response.notes ?? string.Empty;
 
-                context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "InvoiceLineItemsExtraction", 800);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "InvoiceLineItemsExtraction", 800);
             }
             catch (Exception ex)
             {
@@ -410,18 +398,17 @@ namespace BouwdepotInvoiceValidator.Domain.Services
 
             try
             {
-                var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/fraud-detection.json");
+                // Create variables dictionary with vendor name
+                var variables = new Dictionary<string, string>
+                {
+                    { "vendorName", context.ExtractedInvoice.VendorName ?? "Unknown Vendor" }
+                };
 
-                // Replace vendor name placeholder with actual vendor name
-                var instructions = promptTemplate.template.instructions.Select(i =>
-                    i.Replace("{vendorName}", context.ExtractedInvoice.VendorName)).ToList();
-
-                var request = new { };
-
+                // Build the prompt with the dynamic schema and variables
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<FraudDetectionResponse>("FraudDetection", variables);
+                
                 var response = await _llmProvider.SendMultimodalStructuredPromptAsync<FraudDetectionResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", instructions),
+                    prompt,
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -473,7 +460,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                         ProcessingStepStatus.Success);
                 }
 
-                context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "FraudDetection", 800);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "FraudDetection", 800);
             }
             catch (Exception ex)
             {
@@ -524,24 +511,21 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             try
             {
-                var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/line-item-analysis.json");
-
-                // Create a request object with line items
-                var request = new
+                // Build the prompt with the dynamic schema
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<LineItemAnalysisResponse>("LineItemAnalysis");
+                
+                // Add line items to the prompt
+                var lineItemsJson = JsonSerializer.Serialize(context.ExtractedInvoice.LineItems.Select(li => new
                 {
-                    lineItems = context.ExtractedInvoice.LineItems.Select(li => new
-                    {
-                        description = li.Description,
-                        quantity = li.Quantity,
-                        unitPrice = li.UnitPrice,
-                        totalPrice = li.TotalPrice
-                    }).ToList()
-                };
+                    description = li.Description,
+                    quantity = li.Quantity,
+                    unitPrice = li.UnitPrice,
+                    totalPrice = li.TotalPrice
+                }).ToList());
 
+                // Send the prompt with the line items as context
                 var response = await _llmProvider.SendStructuredPromptAsync<LineItemAnalysisResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", promptTemplate.template.instructions)
+                    prompt + "\n\nLine items to analyze:\n```json\n" + lineItemsJson + "\n```"
                 );
 
                 // Create rule validation result
@@ -572,7 +556,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     }
                 }
 
-                context.AddAIModelUsage("Gemini-1.5-Pro", "1.0", "LineItemAnalysis", 1000);
+                context.AddAIModelUsage(_llmProvider.GetTextModelName(), "1.0", "LineItemAnalysis", 1000);
             }
             catch (Exception ex)
             {
@@ -589,31 +573,29 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         {
             try
             {
-                var promptTemplate = await LoadPromptTemplateAsync("DocumentAnalysis/multi-modal-home-improvement.json");
-
-                // Create a request object with invoice data
-                var request = new
+                // Build the prompt with the dynamic schema
+                var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<HomeImprovementResponse>("MultiModalHomeImprovement");
+                
+                // Add invoice data to the prompt
+                var invoiceData = new
                 {
-                    invoice = new
+                    invoiceNumber = context.ExtractedInvoice.InvoiceNumber,
+                    vendorName = context.ExtractedInvoice.VendorName,
+                    totalAmount = context.ExtractedInvoice.TotalAmount,
+                    currency = context.ExtractedInvoice.Currency,
+                    lineItems = context.ExtractedInvoice.LineItems.Select(li => new
                     {
-                        invoiceNumber = context.ExtractedInvoice.InvoiceNumber,
-                        vendorName = context.ExtractedInvoice.VendorName,
-                        totalAmount = context.ExtractedInvoice.TotalAmount,
-                        currency = context.ExtractedInvoice.Currency,
-                        lineItems = context.ExtractedInvoice.LineItems.Select(li => new
-                        {
-                            description = li.Description,
-                            quantity = li.Quantity,
-                            unitPrice = li.UnitPrice,
-                            totalPrice = li.TotalPrice
-                        }).ToList()
-                    }
+                        description = li.Description,
+                        quantity = li.Quantity,
+                        unitPrice = li.UnitPrice,
+                        totalPrice = li.TotalPrice
+                    }).ToList()
                 };
+                
+                var invoiceJson = JsonSerializer.Serialize(invoiceData);
 
                 var response = await _llmProvider.SendMultimodalStructuredPromptAsync<HomeImprovementResponse>(
-                    promptTemplate.template.role + "\n\n" +
-                    promptTemplate.template.task + "\n\n" +
-                    string.Join("\n", promptTemplate.template.instructions),
+                    prompt + "\n\nInvoice data to analyze:\n```json\n" + invoiceJson + "\n```",
                     new List<Stream> { fileStream },
                     new List<string> { context.InputDocument.ContentType }
                 );
@@ -646,7 +628,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                     }
                 }
 
-                context.AddAIModelUsage("Gemini-1.5-Pro-Vision", "1.0", "HomeImprovementAnalysis", 1200);
+                context.AddAIModelUsage(_llmProvider.GetMultimodalModelName(), "1.0", "HomeImprovementAnalysis", 1200);
             }
             catch (Exception ex)
             {

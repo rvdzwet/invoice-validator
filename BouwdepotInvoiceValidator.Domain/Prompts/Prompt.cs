@@ -49,11 +49,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 }
             }
 
-            // Optionally render output format (could be useful for context)
-            if (!string.IsNullOrEmpty(Template?.OutputFormat))
-            {
-                sb.AppendLine($"Output Format: {Template.OutputFormat}");
-            }
+            // Output format is now handled by the DynamicPromptService
 
             return sb.ToString().TrimEnd();
         }
@@ -88,8 +84,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         [JsonPropertyName("instructions")]
         public List<string> Instructions { get; set; }
 
-        [JsonPropertyName("outputFormat")]
-        public string OutputFormat { get; set; }
+        // OutputFormat property removed as it's now handled by the DynamicPromptService
     }
 
     public class Example

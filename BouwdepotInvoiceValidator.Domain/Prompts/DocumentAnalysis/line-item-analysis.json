@@ -30,9 +30,90 @@
       "- Tools & Equipment: Construction tools, rental equipment",
       "- General Supplies: Fasteners, adhesives, general hardware",
       "- Professional Services: Labor, design, inspection",
-      "- Non-Home Improvement: Items not related to home improvement"
-    ],
-    "outputFormat": "{\"isHomeImprovement\": true/false, \"confidence\": 0.0-1.0, \"summary\": \"A general summary of what was purchased and the likely project\", \"primaryPurpose\": \"The main purpose or project these items are for\", \"categories\": [\"List of categories represented in the line items\"], \"lineItemAnalysis\": [{\"description\": \"Original line item description\", \"interpretedAs\": \"What this item actually is\", \"category\": \"Home improvement category\", \"isHomeImprovement\": true/false, \"confidence\": 0.0-1.0, \"notes\": \"Any additional notes about this item\"}]}"
+      "- Non-Home Improvement: Items not related to home improvement",
+      "",
+      "IMPORTANT: Your response MUST be a valid JSON object with the exact structure shown in the JSON schema.",
+      "- Do not include any explanations, notes, or text outside of the JSON structure",
+      "- The 'isHomeImprovement' field must be a boolean value (true or false)",
+      "- The 'confidence' field must be a decimal between 0.0 and 1.0",
+      "- The 'categories' field must be an array of strings, or an empty array if no categories are identified",
+      "- The 'lineItemAnalysis' field must be an array of objects, each with the structure shown in the JSON schema",
+      "- For each line item analysis, ensure all fields are present and properly formatted",
+      "- Ensure the response is properly formatted JSON with no syntax errors"
+    ]
   },
-  "examples": []
+  "examples": [
+    {
+      "input": "Line items: 1. Kitchen renovation labor - 40 hours, 2. Bathroom tiles - 25 m², 3. Sink installation - 1 unit",
+      "output": {
+        "isHomeImprovement": true,
+        "confidence": 0.98,
+        "summary": "The invoice covers kitchen and bathroom renovation work, including labor, materials, and installation services.",
+        "primaryPurpose": "Kitchen and bathroom renovation",
+        "categories": ["Kitchen", "Bathroom", "Professional Services"],
+        "lineItemAnalysis": [
+          {
+            "description": "Kitchen renovation labor - 40 hours",
+            "interpretedAs": "Professional labor services for kitchen renovation",
+            "category": "Professional Services",
+            "isHomeImprovement": true,
+            "confidence": 0.99,
+            "notes": "Labor for kitchen renovation is a core home improvement expense"
+          },
+          {
+            "description": "Bathroom tiles - 25 m²",
+            "interpretedAs": "Tiles for bathroom flooring or walls",
+            "category": "Bathroom",
+            "isHomeImprovement": true,
+            "confidence": 0.98,
+            "notes": "Bathroom tiling is a standard home improvement material"
+          },
+          {
+            "description": "Sink installation - 1 unit",
+            "interpretedAs": "Installation service for a sink fixture",
+            "category": "Kitchen",
+            "isHomeImprovement": true,
+            "confidence": 0.97,
+            "notes": "Sink installation is a typical home improvement service"
+          }
+        ]
+      }
+    },
+    {
+      "input": "Line items: 1. Electrical wiring - 100m, 2. Light fixtures - 5 units, 3. Office furniture - 1 set",
+      "output": {
+        "isHomeImprovement": false,
+        "confidence": 0.85,
+        "summary": "The invoice includes electrical work and light fixtures, which are home improvement items, but also office furniture which is not eligible for Bouwdepot financing.",
+        "primaryPurpose": "Mixed purpose - electrical work and office furnishing",
+        "categories": ["Electrical", "Non-Home Improvement"],
+        "lineItemAnalysis": [
+          {
+            "description": "Electrical wiring - 100m",
+            "interpretedAs": "Electrical wiring for home electrical system",
+            "category": "Electrical",
+            "isHomeImprovement": true,
+            "confidence": 0.98,
+            "notes": "Electrical wiring is a standard home improvement material"
+          },
+          {
+            "description": "Light fixtures - 5 units",
+            "interpretedAs": "Lighting fixtures for installation",
+            "category": "Electrical",
+            "isHomeImprovement": true,
+            "confidence": 0.95,
+            "notes": "Light fixtures are eligible home improvement items"
+          },
+          {
+            "description": "Office furniture - 1 set",
+            "interpretedAs": "Furniture for office use",
+            "category": "Non-Home Improvement",
+            "isHomeImprovement": false,
+            "confidence": 0.97,
+            "notes": "Office furniture is not considered a home improvement item for Bouwdepot purposes"
+          }
+        ]
+      }
+    }
+  ]
 }

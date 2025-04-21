@@ -8,26 +8,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
     /// </summary>
     public static class InvoiceValidationHelpers
     {
-        /// <summary>
-        /// Loads a prompt template from a JSON file
-        /// </summary>
-        public static async Task<PromptTemplate> LoadPromptTemplateAsync(string relativePath)
-        {
-            string fullPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Prompts", relativePath);
-            
-            if (!File.Exists(fullPath))
-            {
-                throw new FileNotFoundException($"Prompt template not found: {fullPath}");
-            }
-            
-            string json = await File.ReadAllTextAsync(fullPath);
-            var options = new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            };
-            
-            return JsonSerializer.Deserialize<PromptTemplate>(json, options);
-        }
+        // LoadPromptTemplateAsync method removed as it's now handled by the DynamicPromptService
 
         /// <summary>
         /// Parses a date string into a DateTime object
@@ -77,9 +58,40 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 {
                     DurationMs = durationMs,
                     ModelsUsed = context.AIModelsUsed.Select(m => $"{m.ModelName} {m.ModelVersion}").ToList(),
-                    Steps = context.ProcessingSteps.Select(s => s.StepName).ToList()
+                    Steps = context.ProcessingSteps.Select(s => s.StepName).ToList(),
+                    
+                    // Add detailed processing steps
+                    DetailedSteps = context.ProcessingSteps.Select(s => new ProcessingStep
+                    {
+                        Name = s.StepName,
+                        Description = s.Description,
+                        Status = s.Status.ToString(),
+                        Timestamp = s.Timestamp
+                    }).ToList(),
+                    
+                    // Add detailed AI model usage
+                    DetailedModelsUsed = context.AIModelsUsed.Select(m => new AIModelUsageInfo
+                    {
+                        ModelName = m.ModelName,
+                        ModelVersion = m.ModelVersion,
+                        Operation = m.Operation,
+                        TokenCount = m.TokenCount,
+                        Timestamp = m.Timestamp
+                    }).ToList()
                 }
             };
+            
+            // Add conversation history if available
+            if (context.ConversationContext != null && context.ConversationContext.Messages.Any())
+            {
+                result.Processing.ConversationHistory = context.ConversationContext.Messages.Select(m => new ConversationMessage
+                {
+                    Role = m.Role,
+                    Content = m.Content,
+                    StepName = m.StepName,
+                    Timestamp = m.Timestamp
+                }).ToList();
+            }
             
             // Add invoice data if available
             if (context.ExtractedInvoice != null)

@@ -15,9 +15,92 @@
       "Categorize each line item into appropriate home improvement categories (e.g., Plumbing, Electrical, Flooring, Kitchen, Bathroom, etc.).",
       "Identify any items that are NOT eligible for Bouwdepot financing (e.g., furniture, appliances not built-in, decorative items).",
       "Provide a confidence score (0.0-1.0) for your assessment of each major line item.",
-      "Calculate the total eligible amount for Bouwdepot financing."
-    ],
-    "outputFormat": "{\"isHomeImprovement\": true/false, \"eligibleCategories\": [\"Category1\", \"Category2\"], \"lineItemAssessment\": [{\"description\": \"Item description\", \"isEligible\": true/false, \"category\": \"Category\", \"confidence\": 0.0-1.0, \"reason\": \"Reason for eligibility decision\"}], \"totalEligibleAmount\": 1234.56, \"totalIneligibleAmount\": 123.45, \"overallConfidence\": 0.0-1.0}"
+      "Calculate the total eligible amount for Bouwdepot financing.",
+      "",
+      "IMPORTANT: Your response MUST be a valid JSON object with the exact structure shown in the JSON schema.",
+      "- Do not include any explanations, notes, or text outside of the JSON structure",
+      "- The 'isHomeImprovement' field must be a boolean value (true or false)",
+      "- The 'eligibleCategories' field must be an array of strings, or an empty array if no eligible categories are identified",
+      "- The 'lineItemAssessment' field must be an array of objects, each with the structure shown in the JSON schema",
+      "- For each line item assessment, ensure all fields are present and properly formatted",
+      "- The 'totalEligibleAmount' and 'totalIneligibleAmount' fields must be numeric values with up to 2 decimal places",
+      "- The 'overallConfidence' field must be a decimal between 0.0 and 1.0",
+      "- Ensure the response is properly formatted JSON with no syntax errors"
+    ]
   },
-  "examples": []
+  "examples": [
+    {
+      "input": "Invoice image for kitchen renovation including cabinets (€3,500), countertops (€1,800), sink (€400), and furniture (€1,200)",
+      "output": {
+        "isHomeImprovement": true,
+        "eligibleCategories": ["Kitchen"],
+        "lineItemAssessment": [
+          {
+            "description": "Kitchen cabinets",
+            "isEligible": true,
+            "category": "Kitchen",
+            "confidence": 0.98,
+            "reason": "Kitchen cabinets are built-in fixtures and qualify as home improvement"
+          },
+          {
+            "description": "Countertops",
+            "isEligible": true,
+            "category": "Kitchen",
+            "confidence": 0.98,
+            "reason": "Countertops are permanent fixtures in the kitchen"
+          },
+          {
+            "description": "Sink",
+            "isEligible": true,
+            "category": "Kitchen",
+            "confidence": 0.97,
+            "reason": "Kitchen sink is a permanent plumbing fixture"
+          },
+          {
+            "description": "Furniture",
+            "isEligible": false,
+            "category": "Non-Home Improvement",
+            "confidence": 0.95,
+            "reason": "Furniture is not considered a permanent home improvement"
+          }
+        ],
+        "totalEligibleAmount": 5700.00,
+        "totalIneligibleAmount": 1200.00,
+        "overallConfidence": 0.97
+      }
+    },
+    {
+      "input": "Invoice image for bathroom renovation including tiling (€2,500), shower installation (€1,200), and labor (€1,800)",
+      "output": {
+        "isHomeImprovement": true,
+        "eligibleCategories": ["Bathroom", "Professional Services"],
+        "lineItemAssessment": [
+          {
+            "description": "Bathroom tiling",
+            "isEligible": true,
+            "category": "Bathroom",
+            "confidence": 0.99,
+            "reason": "Bathroom tiling is a permanent fixture and qualifies as home improvement"
+          },
+          {
+            "description": "Shower installation",
+            "isEligible": true,
+            "category": "Bathroom",
+            "confidence": 0.99,
+            "reason": "Shower installation is a permanent plumbing fixture"
+          },
+          {
+            "description": "Labor",
+            "isEligible": true,
+            "category": "Professional Services",
+            "confidence": 0.95,
+            "reason": "Labor for home improvement projects is eligible"
+          }
+        ],
+        "totalEligibleAmount": 5500.00,
+        "totalIneligibleAmount": 0.00,
+        "overallConfidence": 0.98
+      }
+    }
+  ]
 }

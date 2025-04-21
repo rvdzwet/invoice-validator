@@ -1,10 +1,11 @@
 using BouwdepotInvoiceValidator.Domain.Models;
 using BouwdepotInvoiceValidator.Domain.Models.AdvancedDocumentAnalysis;
+using BouwdepotValidationValidator.Infrastructure.Abstractions;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
 {
     /// <summary>
-    /// Context for invoice validation
+    /// Context for validation of construction fund withdrawal proof documents
     /// </summary>
     public class ValidationContext
     {
@@ -18,10 +19,25 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// </summary>
         public InputDocumentInfo InputDocument { get; set; }
 
-        /// <summary>
-        /// Extracted invoice data
-        /// </summary>
-        public Invoice ExtractedInvoice { get; set; }
+    /// <summary>
+    /// Type of document (invoice, receipt, quotation, etc.)
+    /// </summary>
+    public string DocumentType { get; set; }
+
+    /// <summary>
+    /// Extracted document data (invoice, receipt, or other document)
+    /// </summary>
+    public Invoice ExtractedInvoice { get; set; }
+
+    /// <summary>
+    /// Withdrawal request information if provided
+    /// </summary>
+    public WithdrawalRequest WithdrawalRequest { get; set; }
+
+    /// <summary>
+    /// Identified construction activities
+    /// </summary>
+    public List<ConstructionActivity> IdentifiedActivities { get; set; } = new List<ConstructionActivity>();
 
         /// <summary>
         /// Fraud analysis results
@@ -57,7 +73,16 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// List of validation results
         /// </summary>
         public List<RuleValidationResult> ValidationResults { get; } = new List<RuleValidationResult>();
+        
+        /// <summary>
+        /// Language analysis results
+        /// </summary>
         public LanguageAnalysis Language { get; internal set; }
+        
+        /// <summary>
+        /// Conversation context for maintaining history between LLM calls
+        /// </summary>
+        public ConversationContext ConversationContext { get; set; }
 
         /// <summary>
         /// Adds a processing step to the context

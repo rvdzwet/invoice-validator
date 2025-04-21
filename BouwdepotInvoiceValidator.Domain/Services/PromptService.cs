@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 
 namespace BouwdepotInvoiceValidator.Domain.Services.Services
 {
-    internal class PromptService
+    public class PromptService
     {
         private readonly string _promptsDirectory;
         private readonly Dictionary<string, Prompt> _loadedPrompts = new Dictionary<string, Prompt>();

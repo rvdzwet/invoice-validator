@@ -1,4 +1,5 @@
 using BouwdepotInvoiceValidator.Domain.Services;
+using Microsoft.Extensions.DependencyInjection; // Add this for ServiceCollectionExtensions
 using Microsoft.OpenApi.Models;
 using Serilog; // Added for Serilog
 
@@ -49,7 +50,7 @@ try
 
     builder.Services.AddSingleton<ILoggerFactory, LoggerFactory>();
 
-    builder.Services.AddInvoiceValidation();
+    builder.Services.AddDocumentValidation();
     // --- Register Gemini Client ---
     builder.Services.AddGemini(options =>
     {

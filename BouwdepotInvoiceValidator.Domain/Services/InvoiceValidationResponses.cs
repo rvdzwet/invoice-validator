@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using BouwdepotInvoiceValidator.Domain.Attributes;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
 {
@@ -16,6 +17,16 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// Whether the document is an invoice
         /// </summary>
         public bool isInvoice { get; set; }
+
+        /// <summary>
+        /// Whether the document is a receipt
+        /// </summary>
+        public bool isReceipt { get; set; }
+        
+        /// <summary>
+        /// Whether the document is a quotation/estimate
+        /// </summary>
+        public bool isQuotation { get; set; }
 
         /// <summary>
         /// Confidence score (0-100)
@@ -98,63 +109,81 @@ namespace BouwdepotInvoiceValidator.Domain.Services
     /// <summary>
     /// Response from invoice line items extraction
     /// </summary>
+    [PromptSchema("Response from invoice line items extraction")]
     public class InvoiceLineItemsResponse
     {
         /// <summary>
         /// Line items
         /// </summary>
+        [PromptProperty("Line items in the invoice", true)]
         public List<LineItemResponse> lineItems { get; set; }
 
         /// <summary>
         /// Payment terms
         /// </summary>
+        [PromptProperty("Payment terms (e.g., Net 30 days)", false)]
         public string paymentTerms { get; set; }
 
         /// <summary>
         /// Payment method
         /// </summary>
+        [PromptProperty("Payment method (e.g., Bank transfer, Credit card)", false)]
         public string paymentMethod { get; set; }
 
         /// <summary>
         /// Payment reference
         /// </summary>
+        [PromptProperty("Payment reference number", false)]
         public string paymentReference { get; set; }
 
         /// <summary>
         /// Additional notes
         /// </summary>
+        [PromptProperty("Additional notes or important information", false)]
         public string notes { get; set; }
 
         /// <summary>
         /// Confidence score (0.0-1.0)
         /// </summary>
+        [PromptProperty("Confidence score (0.0-1.0)", true)]
         public double confidence { get; set; }
     }
 
     /// <summary>
     /// Line item in invoice line items response
     /// </summary>
+    [PromptSchema("Line item in an invoice")]
     public class LineItemResponse
     {
         /// <summary>
         /// Description of the item
         /// </summary>
+        [PromptProperty("Description of the item", true)]
         public string description { get; set; }
 
         /// <summary>
         /// Quantity of the item
         /// </summary>
+        [PromptProperty("Quantity of the item", true)]
         public int quantity { get; set; }
 
         /// <summary>
         /// Unit price
         /// </summary>
+        [PromptProperty("Price per unit", true)]
         public decimal unitPrice { get; set; }
 
         /// <summary>
         /// Total price
         /// </summary>
+        [PromptProperty("Total price for this line item", true)]
         public decimal totalPrice { get; set; }
+        
+        /// <summary>
+        /// VAT/tax rate applied to this item
+        /// </summary>
+        [PromptProperty("VAT/tax rate applied to this item", true)]
+        public decimal vatRate { get; set; }
     }
 
     /// <summary>
@@ -394,10 +423,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// </summary>
         public List<string> instructions { get; set; }
 
-        /// <summary>
-        /// Format for the output
-        /// </summary>
-        public string outputFormat { get; set; }
+        // outputFormat property removed as it's now handled by the DynamicPromptService
     }
 
     /// <summary>

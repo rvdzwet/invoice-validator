@@ -1,4 +1,4 @@
-﻿using BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models;
+﻿﻿﻿using BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models;
 using BouwdepotValidationValidator.Infrastructure.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -14,6 +14,18 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
     /// </summary>
     internal class GeminiClient : ILLMProvider // Implementing the exact interface
     {
+        /// <inheritdoc/>
+        public string GetTextModelName()
+        {
+            return _options.DefaultTextModel;
+        }
+
+        /// <inheritdoc/>
+        public string GetMultimodalModelName()
+        {
+            return _options.DefaultMultimodalModel;
+        }
+
         private readonly ILogger<GeminiClient> _logger;
         private readonly HttpClient _httpClient;
         private readonly GeminiOptions _options;
@@ -167,7 +179,13 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
         // --- Interface Methods Implementation (Corrected Signatures) ---
 
         /// <inheritdoc/>
-        public async Task<string> SendTextPromptAsync(string prompt) // No CancellationToken
+        public ConversationContext CreateConversationContext()
+        {
+            return new ConversationContext();
+        }
+
+        /// <inheritdoc/>
+        public async Task<string> SendTextPromptAsync(string prompt, ConversationContext conversationContext = null)
         {
             if (string.IsNullOrWhiteSpace(prompt)) throw new ArgumentNullException(nameof(prompt));
 
@@ -175,13 +193,53 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
             string apiUrl = GetApiUrl(modelName);
             _logger.LogInformation("Sending text prompt to Gemini API [{ModelName}] at {ApiUrl}", modelName, apiUrl);
 
-            var request = new GeminiRequest { Contents = new List<Content> { new Content { Parts = new List<Part> { new Part { Text = prompt } } } } };
+            // Create request with conversation history if provided
+            var request = new GeminiRequest();
+            
+            if (conversationContext != null && conversationContext.Messages.Any())
+            {
+                // Add previous messages from conversation history
+                foreach (var message in conversationContext.Messages)
+                {
+                    request.Contents.Add(new Content 
+                    { 
+                        Role = message.Role,
+                        Parts = new List<Part> { new Part { Text = message.Content } } 
+                    });
+                }
+                
+                // Add current message
+                request.Contents.Add(new Content 
+                { 
+                    Role = "user",
+                    Parts = new List<Part> { new Part { Text = prompt } } 
+                });
+                
+                // Add to conversation history
+                conversationContext.AddUserMessage(prompt, null);
+            }
+            else
+            {
+                // No conversation history, just add the current message
+                request.Contents.Add(new Content 
+                { 
+                    Parts = new List<Part> { new Part { Text = prompt } } 
+                });
+            }
 
             try
             {
                 // Using CancellationToken.None for the internal async call
                 HttpResponseMessage response = await _httpClient.PostAsJsonAsync(apiUrl, request, _jsonSerializerOptions, CancellationToken.None);
-                return await ProcessApiResponseAsync(response, CancellationToken.None); // Pass None
+                string responseText = await ProcessApiResponseAsync(response, CancellationToken.None);
+                
+                // Add model response to conversation history if provided
+                if (conversationContext != null)
+                {
+                    conversationContext.AddModelMessage(responseText);
+                }
+                
+                return responseText;
             }
             catch (HttpRequestException httpEx) { _logger.LogError(httpEx, "HTTP error sending text prompt to Gemini API."); throw; }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || ex.CancellationToken == CancellationToken.None) // Check if timeout related since no external token
@@ -197,7 +255,8 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
         public async Task<string> SendMultimodalPromptAsync(
             string prompt,
             IEnumerable<Stream> imageStreams,
-            IEnumerable<string> mimeTypes) // No CancellationToken
+            IEnumerable<string> mimeTypes,
+            ConversationContext conversationContext = null)
         {
             if (string.IsNullOrWhiteSpace(prompt)) throw new ArgumentNullException(nameof(prompt));
             if (imageStreams == null) throw new ArgumentNullException(nameof(imageStreams));
@@ -213,19 +272,60 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
             string apiUrl = GetApiUrl(modelName);
             _logger.LogInformation("Sending multimodal prompt ({ImageCount} images) to Gemini API [{ModelName}] at {ApiUrl}", imageStreamList.Count, modelName, apiUrl);
 
+            // Prepare parts with text and images
             var parts = new List<Part> { new Part { Text = prompt } };
             for (int i = 0; i < imageStreamList.Count; i++)
             {
-                string base64Image = await ConvertStreamToBase64Async(imageStreamList[i]); // This doesn't take a token
+                string base64Image = await ConvertStreamToBase64Async(imageStreamList[i]);
                 parts.Add(new Part { InlineData = new InlineData { MimeType = mimeTypeList[i], Data = base64Image } });
             }
-            var request = new GeminiRequest { Contents = new List<Content> { new Content { Parts = parts } } };
+            
+            // Create request with conversation history if provided
+            var request = new GeminiRequest();
+            
+            if (conversationContext != null && conversationContext.Messages.Any())
+            {
+                // Add previous messages from conversation history
+                foreach (var message in conversationContext.Messages)
+                {
+                    // For simplicity, we only include text parts from history
+                    // Images from previous messages are not included
+                    request.Contents.Add(new Content 
+                    { 
+                        Role = message.Role,
+                        Parts = new List<Part> { new Part { Text = message.Content } } 
+                    });
+                }
+                
+                // Add current message with images
+                request.Contents.Add(new Content 
+                { 
+                    Role = "user",
+                    Parts = parts 
+                });
+                
+                // Add to conversation history
+                conversationContext.AddUserMessage(prompt, null);
+            }
+            else
+            {
+                // No conversation history, just add the current message with images
+                request.Contents.Add(new Content { Parts = parts });
+            }
 
             try
             {
                 // Using CancellationToken.None for the internal async call
                 HttpResponseMessage response = await _httpClient.PostAsJsonAsync(apiUrl, request, _jsonSerializerOptions, CancellationToken.None);
-                return await ProcessApiResponseAsync(response, CancellationToken.None); // Pass None
+                string responseText = await ProcessApiResponseAsync(response, CancellationToken.None);
+                
+                // Add model response to conversation history if provided
+                if (conversationContext != null)
+                {
+                    conversationContext.AddModelMessage(responseText);
+                }
+                
+                return responseText;
             }
             catch (HttpRequestException httpEx) { _logger.LogError(httpEx, "HTTP error sending multimodal prompt to Gemini API."); throw; }
             catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException || ex.CancellationToken == CancellationToken.None)
@@ -238,11 +338,18 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
 
         /// <inheritdoc/>
         public async Task<TResponse> SendStructuredPromptAsync<TResponse>(
-            string prompt) // No CancellationToken
-            where TResponse : class, new() // Added 'new()' constraint back
+            string prompt,
+            ConversationContext conversationContext = null,
+            string stepName = null)
+            where TResponse : class, new()
         {
-            var responseText = await SendTextPromptAsync(prompt);
-
+            // Add step name to conversation context if provided
+            if (conversationContext != null && !string.IsNullOrEmpty(stepName))
+            {
+                conversationContext.AddUserMessage(prompt, stepName);
+            }
+            
+            var responseText = await SendTextPromptAsync(prompt, conversationContext);
             responseText = CleanJsonResponseText(responseText);
 
             var structuredResponse = JsonSerializer.Deserialize<TResponse>(responseText, _jsonSerializerOptions);
@@ -259,11 +366,18 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
         public async Task<TResponse> SendMultimodalStructuredPromptAsync<TResponse>(
             string prompt,
             IEnumerable<Stream> imageStreams,
-            IEnumerable<string> mimeTypes) // No CancellationToken
-            where TResponse : class, new() // Added 'new()' constraint back
+            IEnumerable<string> mimeTypes,
+            ConversationContext conversationContext = null,
+            string stepName = null)
+            where TResponse : class, new()
         {
-            var responseText = await SendMultimodalPromptAsync(prompt, imageStreams, mimeTypes);
-
+            // Add step name to conversation context if provided
+            if (conversationContext != null && !string.IsNullOrEmpty(stepName))
+            {
+                conversationContext.AddUserMessage(prompt, stepName);
+            }
+            
+            var responseText = await SendMultimodalPromptAsync(prompt, imageStreams, mimeTypes, conversationContext);
             responseText = CleanJsonResponseText(responseText);
 
             var structuredResponse = JsonSerializer.Deserialize<TResponse>(responseText, _jsonSerializerOptions);
@@ -271,6 +385,66 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
             {
                 _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", typeof(TResponse).Name, responseText);
                 throw new InvalidOperationException($"Could not deserialize response into {typeof(TResponse).Name}.");
+            }
+            return structuredResponse;
+        }
+        
+        /// <inheritdoc/>
+        public async Task<object> SendStructuredPromptAsync(
+            Type responseType,
+            string prompt,
+            ConversationContext conversationContext = null,
+            string stepName = null)
+        {
+            if (responseType == null) throw new ArgumentNullException(nameof(responseType));
+            if (string.IsNullOrWhiteSpace(prompt)) throw new ArgumentNullException(nameof(prompt));
+            
+            // Add step name to conversation context if provided
+            if (conversationContext != null && !string.IsNullOrEmpty(stepName))
+            {
+                conversationContext.AddUserMessage(prompt, stepName);
+            }
+            
+            var responseText = await SendTextPromptAsync(prompt, conversationContext);
+            responseText = CleanJsonResponseText(responseText);
+            
+            var structuredResponse = JsonSerializer.Deserialize(responseText, responseType, _jsonSerializerOptions);
+            if (structuredResponse == null)
+            {
+                _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", responseType.Name, responseText);
+                throw new InvalidOperationException($"Could not deserialize response into {responseType.Name}.");
+            }
+            return structuredResponse;
+        }
+        
+        /// <inheritdoc/>
+        public async Task<object> SendMultimodalStructuredPromptAsync(
+            Type responseType,
+            string prompt,
+            IEnumerable<Stream> imageStreams,
+            IEnumerable<string> mimeTypes,
+            ConversationContext conversationContext = null,
+            string stepName = null)
+        {
+            if (responseType == null) throw new ArgumentNullException(nameof(responseType));
+            if (string.IsNullOrWhiteSpace(prompt)) throw new ArgumentNullException(nameof(prompt));
+            if (imageStreams == null) throw new ArgumentNullException(nameof(imageStreams));
+            if (mimeTypes == null) throw new ArgumentNullException(nameof(mimeTypes));
+            
+            // Add step name to conversation context if provided
+            if (conversationContext != null && !string.IsNullOrEmpty(stepName))
+            {
+                conversationContext.AddUserMessage(prompt, stepName);
+            }
+            
+            var responseText = await SendMultimodalPromptAsync(prompt, imageStreams, mimeTypes, conversationContext);
+            responseText = CleanJsonResponseText(responseText);
+            
+            var structuredResponse = JsonSerializer.Deserialize(responseText, responseType, _jsonSerializerOptions);
+            if (structuredResponse == null)
+            {
+                _logger.LogError("Failed to deserialize Gemini response text into {ResponseType}. Response text: {ResponseText}", responseType.Name, responseText);
+                throw new InvalidOperationException($"Could not deserialize response into {responseType.Name}.");
             }
             return structuredResponse;
         }
