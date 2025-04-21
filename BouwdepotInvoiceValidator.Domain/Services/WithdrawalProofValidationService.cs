@@ -1,9 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-using BouwdepotInvoiceValidator.Domain.Models;
-
 using System.Diagnostics;
-using static BouwdepotInvoiceValidator.Domain.Services.InvoiceValidationHelpers;
 
 using BouwdepotInvoiceValidator.Domain.Services.Pipeline;
 
@@ -29,7 +26,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         }
 
         /// <inheritdoc/>
-        public async Task<ValidationResult> ValidateWithdrawalProofAsync(Stream fileStream, string fileName, string contentType)
+        public async Task<ValidationContext> ValidateWithdrawalProofAsync(Stream fileStream, string fileName, string contentType)
         {
             _logger.LogInformation("Starting withdrawal proof validation for file: {FileName}", fileName);
             var stopwatch = Stopwatch.StartNew();
@@ -54,7 +51,9 @@ namespace BouwdepotInvoiceValidator.Domain.Services
                 _logger.LogInformation("Withdrawal proof validation completed for file: {FileName}, ContextId: {ContextId}",
                     fileName, context.Id);
 
-                return MapToValidationResult(context, stopwatch.ElapsedMilliseconds);
+                context.ElapsedTime = stopwatch.Elapsed;
+
+                return context;
             }
             catch (Exception ex)
             {

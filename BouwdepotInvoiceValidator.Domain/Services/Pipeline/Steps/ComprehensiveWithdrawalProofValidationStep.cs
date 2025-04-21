@@ -1,5 +1,4 @@
-using BouwdepotInvoiceValidator.Domain.Models;
-using BouwdepotInvoiceValidator.Domain.Services.Services;
+using BouwdepotInvoiceValidator.Domain.Services.Schema;
 using Microsoft.Extensions.Logging;
 using System.Text;
 
@@ -11,7 +10,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline.Steps
     public class ComprehensiveWithdrawalProofValidationStep : IValidationPipelineStep
     {
         private readonly ILogger<ComprehensiveWithdrawalProofValidationStep> _logger;
-        private readonly PromptService _promptService;
+        private readonly DynamicPromptService _dynamicPromptService;
 
         /// <summary>
         /// Gets the name of the step
@@ -31,19 +30,20 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline.Steps
         /// <summary>
         /// Gets the type of the expected response from the LLM
         /// </summary>
-        public Type ResponseType => typeof(HomeImprovementResponse);
+        public Type ResponseType => typeof(ComprehensiveWithdrawalProofResponse);
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="ComprehensiveWithdrawalProofValidation"/> class
+        /// Initializes a new instance of the <see cref="ComprehensiveWithdrawalProofValidationStep"/> class
         /// </summary>
         /// <param name="logger">The logger</param>
         /// <param name="promptService">The prompt service</param>
+        /// <param name="dynamicPromptService">The dynamic prompt service</param>
         public ComprehensiveWithdrawalProofValidationStep(
             ILogger<ComprehensiveWithdrawalProofValidationStep> logger,
-            PromptService promptService)
+            DynamicPromptService dynamicPromptService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _promptService = promptService ?? throw new ArgumentNullException(nameof(promptService));
+            _dynamicPromptService = dynamicPromptService ?? throw new ArgumentNullException(nameof(dynamicPromptService));
         }
 
         /// <inheritdoc/>
@@ -59,7 +59,8 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline.Steps
             _logger.LogInformation("Preparing construction fund withdrawal eligibility prompt: {ContextId}", context.Id);
             context.AddProcessingStep(StepName, "Determining eligibility for construction fund withdrawal", ProcessingStepStatus.InProgress);
 
-            var prompt = _promptService.GetPrompt(PromptTemplatePath).Render();
+            // Use dynamic prompt service to generate schema from POCO
+            var prompt = _dynamicPromptService.BuildPromptWithDynamicSchema<ComprehensiveWithdrawalProofResponse>(PromptTemplatePath);
 
             return (prompt, new List<Stream> { documentStream }, new List<string> { context.InputDocument.ContentType });
         }
@@ -67,63 +68,62 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline.Steps
         /// <inheritdoc/>
         public async Task ProcessResponseAsync(ValidationContext context, object response)
         {
-            var eligibilityResponse = (HomeImprovementResponse)response;
+            var comprehensiveResponse = (ComprehensiveWithdrawalProofResponse)response;
+            
+            // Store the comprehensive validation result directly in the context
+            context.ComprehensiveValidationResult = comprehensiveResponse;
+            
+                        
 
-            // Update line items with eligibility information
-            if (context.ExtractedInvoice.LineItems != null && eligibilityResponse.lineItemAssessment != null)
+            // Determine overall outcome based on eligibility status
+            string overallStatus = comprehensiveResponse.EligibilityDetermination.OverallStatus;
+            switch (overallStatus)
             {
-                for (int i = 0; i < context.ExtractedInvoice.LineItems.Count && i < eligibilityResponse.lineItemAssessment.Count; i++)
-                {
-                    var lineItem = context.ExtractedInvoice.LineItems[i];
-                    var assessment = eligibilityResponse.lineItemAssessment[i];
-
-                    lineItem.IsBouwdepotEligible = assessment.isEligible;
-                    lineItem.EligibilityReason = assessment.reason;
-
-                    // Map to construction activities if eligible
-                    if (assessment.isEligible && !string.IsNullOrEmpty(assessment.category))
-                    {
-                        var activityCategory = WithdrawalEligibilityHelper.MapCategoryStringToEnum(assessment.category);
-
-                        context.IdentifiedActivities.Add(new ConstructionActivity
-                        {
-                            ActivityName = lineItem.Description,
-                            Description = assessment.reason,
-                            Category = activityCategory,
-                            IsEligible = true,
-                            IdentificationKeywords = new List<string> { lineItem.Description }
-                        });
-                    }
-                }
+                case "Eligible":
+                    context.OverallOutcome = ValidationOutcome.Valid;
+                    break;
+                case "Partially Eligible":
+                    context.OverallOutcome = ValidationOutcome.NeedsReview; // Use NeedsReview instead of PartiallyValid
+                    break;
+                default:
+                    context.OverallOutcome = ValidationOutcome.Invalid;
+                    break;
             }
 
-            // Determine overall eligibility
-            bool isEligible = eligibilityResponse.isHomeImprovement && eligibilityResponse.totalEligibleAmount > 0;
+            
 
-            // Generate a summary of identified construction activities
-            var activitySummary = WithdrawalEligibilityHelper.GenerateActivitySummary(context.IdentifiedActivities);
-
-            if (isEligible)
+            // Set context summary based on eligibility
+            if (comprehensiveResponse.EligibilityDetermination.OverallStatus == "Eligible" || 
+                comprehensiveResponse.EligibilityDetermination.OverallStatus == "Partially Eligible")
             {
                 context.AddProcessingStep(StepName,
-                    $"Document is eligible for construction fund withdrawal. Eligible amount: {eligibilityResponse.totalEligibleAmount:C}",
+                    $"Document validation completed. Status: {comprehensiveResponse.EligibilityDetermination.OverallStatus}. " +
+                    $"Eligible amount: {comprehensiveResponse.EligibilityDetermination.TotalEligibleAmountDetermined:C}",
                     ProcessingStepStatus.Success);
 
                 if (context.OverallOutcome != ValidationOutcome.NeedsReview)
                 {
-                    context.OverallOutcome = ValidationOutcome.Valid;
-
                     var summaryBuilder = new StringBuilder();
-                    summaryBuilder.AppendLine($"Document is valid and eligible for construction fund withdrawal.");
-                    summaryBuilder.AppendLine($"Identified {context.IdentifiedActivities.Count} eligible construction activities.");
-                    summaryBuilder.AppendLine($"Eligible amount: {eligibilityResponse.totalEligibleAmount:C}");
-
-                    if (eligibilityResponse.eligibleCategories?.Any() == true)
+                    summaryBuilder.AppendLine(comprehensiveResponse.EligibilityDetermination.RationaleSummary);
+                    summaryBuilder.AppendLine();
+                    summaryBuilder.AppendLine($"Identified {context.ComprehensiveValidationResult.ConstructionActivities.DetailedActivityAnalysis.Where(c => c.IsEligible).Count()} eligible construction activities.");
+                    summaryBuilder.AppendLine($"Eligible amount: {comprehensiveResponse.EligibilityDetermination.TotalEligibleAmountDetermined:C}");
+                    summaryBuilder.AppendLine($"Fraud risk level: {comprehensiveResponse.FraudAnalysis.FraudRiskLevel}");
+                    
+                    // Add required actions
+                    if (comprehensiveResponse.EligibilityDetermination.RequiredActions != null &&
+                        comprehensiveResponse.EligibilityDetermination.RequiredActions.Count > 0)
                     {
-                        summaryBuilder.AppendLine($"Eligible categories: {string.Join(", ", eligibilityResponse.eligibleCategories)}");
+                        summaryBuilder.AppendLine();
+                        summaryBuilder.AppendLine("Required actions:");
+                        foreach (var action in comprehensiveResponse.EligibilityDetermination.RequiredActions)
+                        {
+                            summaryBuilder.AppendLine($"- {action}");
+                            context.AddIssue("RequiredAction", action, IssueSeverity.Info);
+                        }
                     }
 
-                    summaryBuilder.AppendLine(activitySummary);
+                    summaryBuilder.AppendLine();
 
                     context.OverallOutcomeSummary = summaryBuilder.ToString().TrimEnd();
                 }
@@ -131,18 +131,16 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline.Steps
             else
             {
                 context.AddProcessingStep(StepName,
-                    "Document is not eligible for construction fund withdrawal",
+                    $"Document is not eligible for construction fund withdrawal. Reason: {comprehensiveResponse.EligibilityDetermination.RationaleCategory}",
                     ProcessingStepStatus.Warning);
 
                 context.AddIssue("NotEligible",
-                    "Document is not eligible for construction fund financing",
+                    comprehensiveResponse.EligibilityDetermination.RationaleSummary,
                     IssueSeverity.Warning);
 
                 context.OverallOutcome = ValidationOutcome.Invalid;
-                context.OverallOutcomeSummary = "Document is not eligible for construction fund financing.";
+                context.OverallOutcomeSummary = comprehensiveResponse.EligibilityDetermination.RationaleSummary;
             }
-
-            context.AddAIModelUsage("Gemini", "1.0", "WithdrawalEligibility", 500);
 
             await Task.CompletedTask; // To satisfy the async signature
         }

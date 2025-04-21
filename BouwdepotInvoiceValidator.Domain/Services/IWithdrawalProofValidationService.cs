@@ -1,5 +1,3 @@
-using BouwdepotInvoiceValidator.Domain.Models;
-
 namespace BouwdepotInvoiceValidator.Domain.Services
 {
     /// <summary>
@@ -14,6 +12,6 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         /// <param name="fileName">The name of the file</param>
         /// <param name="contentType">The MIME type of the file</param>
         /// <returns>A comprehensive validation response with audit information</returns>
-        Task<ValidationResult> ValidateWithdrawalProofAsync(Stream fileStream, string fileName, string contentType);
+        Task<ValidationContext> ValidateWithdrawalProofAsync(Stream fileStream, string fileName, string contentType);
     }
 }

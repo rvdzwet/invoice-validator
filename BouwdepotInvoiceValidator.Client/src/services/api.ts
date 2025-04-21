@@ -1,5 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import { ValidationResult, ConsolidatedAuditReport } from '../types/models';
+import { ComprehensiveWithdrawalProofResponse } from '../types/comprehensiveModels';
 
 // Define interfaces for API requests
 
@@ -41,6 +42,52 @@ interface ProcessAdditionalPagesResponse {
 interface CombinedValidationResponse {
   validationResult: ValidationResult;
   auditReport: ConsolidatedAuditReport;
+}
+
+/**
+ * Response for comprehensive withdrawal validation
+ */
+interface ValidationContext {
+  id: string;
+  inputDocument: {
+    fileName: string;
+    fileSizeBytes: number;
+    fileType: string;
+    uploadTimestamp: string;
+  };
+  comprehensiveValidationResult: ComprehensiveWithdrawalProofResponse;
+  overallOutcome: string;
+  overallOutcomeSummary: string;
+  processingSteps: Array<{
+    stepName: string;
+    description: string;
+    status: string;
+    timestamp: string;
+  }>;
+  issues: Array<{
+    issueType: string;
+    description: string;
+    severity: string;
+    field: string | null;
+    timestamp: string;
+    stackTrace: string | null;
+  }>;
+  aiModelsUsed: Array<{
+    modelName: string;
+    modelVersion: string;
+    operation: string;
+    tokenCount: number;
+    timestamp: string;
+  }>;
+  validationResults: Array<{
+    ruleId: string;
+    ruleName: string;
+    description: string;
+    result: boolean;
+    severity: string;
+    message: string;
+  }>;
+  elapsedTime: string;
 }
 
 /**
@@ -111,6 +158,33 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('API health check failed:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Validates a withdrawal proof document (PDF, image)
+   * @param file The document file to validate
+   * @returns Promise with validation context including comprehensive validation result
+   */
+  async validateWithdrawalProof(file: File): Promise<ValidationContext> {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await this.api.post<ValidationContext>(
+        '/api/withdrawalproof/validate',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      return response.data;
+    } catch (error) {
+      console.error('Error validating withdrawal proof:', error);
       throw error;
     }
   }

@@ -1,8 +1,6 @@
 ﻿﻿﻿using BouwdepotInvoiceValidator.Domain.Services.Pipeline;
 using BouwdepotInvoiceValidator.Domain.Services.Pipeline.Steps;
 using BouwdepotInvoiceValidator.Domain.Services.Schema;
-using BouwdepotInvoiceValidator.Domain.Services.Services;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
@@ -30,13 +28,8 @@ namespace BouwdepotInvoiceValidator.Domain.Services
             
             // Register the pipeline
             services.AddScoped<IValidationPipeline, ValidationPipeline>();
-            
-            // Register the validation services
-            services.AddScoped<IInvoiceValidationService, DocumentValidationService>();
+
             services.AddScoped<IWithdrawalProofValidationService, WithdrawalProofValidationService>();
-            
-            // Register supporting services
-            services.AddSingleton<PromptService>();
             services.AddSingleton<IJsonSchemaGenerator, JsonSchemaGenerator>();
             services.AddSingleton<DynamicPromptService>();
 

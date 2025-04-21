@@ -8,8 +8,7 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models
         [JsonPropertyName("contents")]
         public List<Content> Contents { get; set; } = new List<Content>();
 
-        // Optional: Add GenerationConfig if needed
-        // [JsonPropertyName("generationConfig")]
-        // public GenerationConfig GenerationConfig { get; set; }
+        [JsonPropertyName("generationConfig")]
+        public GenerationConfig GenerationConfig { get; set; }
     }
 }

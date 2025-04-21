@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
@@ -47,7 +44,11 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
                 var schemaAttribute = type.GetCustomAttribute<PromptSchemaAttribute>();
                 if (schemaAttribute != null && !string.IsNullOrEmpty(schemaAttribute.Description))
                 {
-                    schema.AppendLine($"  \"description\": \"{schemaAttribute.Description}\",");
+                    schema.AppendLine($"  \"description\": \"{schemaAttribute.Description}\\n\\nThis schema was generated using prompt annotations:\\n- [PromptSchema] marks classes for schema generation and provides overall description\\n- [PromptProperty] marks properties with descriptions, required state, defaults, and examples\\n- [PromptIgnore] marks properties to exclude from the schema\",");
+                }
+                else
+                {
+                    schema.AppendLine($"  \"description\": \"This schema was generated using prompt annotations:\\n- [PromptSchema] marks classes for schema generation and provides overall description\\n- [PromptProperty] marks properties with descriptions, required state, defaults, and examples\\n- [PromptIgnore] marks properties to exclude from the schema\",");
                 }
                 
                 // Add properties
@@ -229,35 +230,60 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
         /// <returns>The JSON type</returns>
         private string GetJsonType(Type type)
         {
-            if (type == typeof(string) || type == typeof(Guid) || type == typeof(DateTime) || type == typeof(DateTimeOffset) || type == typeof(TimeSpan))
+            // Check if type is nullable
+            bool isNullable = false;
+            Type underlyingType = type;
+            
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
-                return "string";
+                isNullable = true;
+                underlyingType = Nullable.GetUnderlyingType(type);
             }
-            else if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte) || 
-                     type == typeof(uint) || type == typeof(ulong) || type == typeof(ushort) || type == typeof(sbyte))
+            
+            string baseType;
+            if (underlyingType == typeof(string) || underlyingType == typeof(Guid) || underlyingType == typeof(DateTime) || 
+                underlyingType == typeof(DateTimeOffset) || underlyingType == typeof(TimeSpan))
             {
-                return "integer";
+                baseType = "string";
             }
-            else if (type == typeof(float) || type == typeof(double) || type == typeof(decimal))
+            else if (underlyingType == typeof(int) || underlyingType == typeof(long) || underlyingType == typeof(short) || 
+                     underlyingType == typeof(byte) || underlyingType == typeof(uint) || underlyingType == typeof(ulong) || 
+                     underlyingType == typeof(ushort) || underlyingType == typeof(sbyte))
             {
-                return "number";
+                baseType = "integer";
             }
-            else if (type == typeof(bool))
+            else if (underlyingType == typeof(float) || underlyingType == typeof(double) || underlyingType == typeof(decimal))
             {
-                return "boolean";
+                baseType = "number";
             }
-            else if (type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)))
+            else if (underlyingType == typeof(bool))
             {
-                return "array";
+                baseType = "boolean";
             }
-            else if (type.IsClass && type != typeof(string))
+            else if (underlyingType.IsArray || (underlyingType.IsGenericType && underlyingType.GetGenericTypeDefinition() == typeof(List<>)))
             {
-                return "object";
+                baseType = "array";
+            }
+            else if (underlyingType.IsClass && underlyingType != typeof(string))
+            {
+                baseType = "object";
             }
             else
             {
-                return "string"; // Default to string for unknown types
+                baseType = "string"; // Default to string for unknown types
             }
+            
+            return baseType;
+        }
+        
+        /// <summary>
+        /// Checks if a type is nullable
+        /// </summary>
+        /// <param name="type">The type to check</param>
+        /// <returns>True if the type is nullable</returns>
+        private bool IsNullableType(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
         }
         
         /// <summary>
@@ -268,19 +294,46 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
         private void AddTypeSpecificConstraints(StringBuilder schema, PropertyInfo property)
         {
             var type = property.PropertyType;
+            bool isNullable = IsNullableType(type);
             
-            if (type == typeof(string))
+            // If the property is nullable, add null to the type array
+            if (isNullable || type.IsClass || type.IsInterface)
+            {
+                // Removing trailing comma if exists in the previous line
+                string prevLine = schema.ToString().TrimEnd();
+                if (prevLine.EndsWith(","))
+                {
+                    schema.Remove(schema.Length - (prevLine.Length - prevLine.LastIndexOf(',')), 1);
+                    schema.AppendLine();
+                }
+                
+                // Replace "type": "X" with "type": ["X", "null"]
+                schema.AppendLine("      \"type\": [");
+                schema.AppendLine($"        \"{GetJsonType(type)}\",");
+                schema.AppendLine("        \"null\"");
+                schema.AppendLine("      ],");
+            }
+            
+            if (type == typeof(string) || (isNullable && Nullable.GetUnderlyingType(type) == typeof(string)))
             {
                 // Add string-specific constraints
                 // (e.g., minLength, maxLength, pattern)
             }
             else if (type == typeof(int) || type == typeof(long) || type == typeof(short) || type == typeof(byte) ||
-                     type == typeof(uint) || type == typeof(ulong) || type == typeof(ushort) || type == typeof(sbyte))
+                     type == typeof(uint) || type == typeof(ulong) || type == typeof(ushort) || type == typeof(sbyte) ||
+                     (isNullable && Nullable.GetUnderlyingType(type) != null && 
+                      (Nullable.GetUnderlyingType(type) == typeof(int) || Nullable.GetUnderlyingType(type) == typeof(long) ||
+                       Nullable.GetUnderlyingType(type) == typeof(short) || Nullable.GetUnderlyingType(type) == typeof(byte) ||
+                       Nullable.GetUnderlyingType(type) == typeof(uint) || Nullable.GetUnderlyingType(type) == typeof(ulong) ||
+                       Nullable.GetUnderlyingType(type) == typeof(ushort) || Nullable.GetUnderlyingType(type) == typeof(sbyte))))
             {
                 // Add integer-specific constraints
                 // (e.g., minimum, maximum, multipleOf)
             }
-            else if (type == typeof(float) || type == typeof(double) || type == typeof(decimal))
+            else if (type == typeof(float) || type == typeof(double) || type == typeof(decimal) ||
+                    (isNullable && Nullable.GetUnderlyingType(type) != null && 
+                     (Nullable.GetUnderlyingType(type) == typeof(float) || Nullable.GetUnderlyingType(type) == typeof(double) ||
+                      Nullable.GetUnderlyingType(type) == typeof(decimal))))
             {
                 // Add number-specific constraints
                 // (e.g., minimum, maximum, multipleOf)
@@ -300,8 +353,265 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
                     elementType = type.GetGenericArguments()[0];
                 }
                 
-                schema.AppendLine($"        \"type\": \"{GetJsonType(elementType)}\"");
+                // Set the type of array items
+                if (IsNullableType(elementType) || elementType.IsClass || elementType.IsInterface)
+                {
+                    schema.AppendLine("        \"type\": [");
+                    schema.AppendLine($"          \"{GetJsonType(elementType)}\",");
+                    schema.AppendLine("          \"null\"");
+                    schema.AppendLine("        ]");
+                }
+                else
+                {
+                    schema.AppendLine($"        \"type\": \"{GetJsonType(elementType)}\"");
+                }
+                
+                // Handle arrays of complex objects
+                if (elementType.IsClass && elementType != typeof(string))
+                {
+                    // Generate schema for array items that are objects
+                    schema.AppendLine(",        \"properties\": {");
+                    var requiredProperties = new List<string>();
+                    GenerateObjectSchema(schema, elementType, 10, requiredProperties); // Deeper indentation for array items
+                    schema.AppendLine("        }");
+                    
+                    // Add required properties for array items if any
+                    if (requiredProperties.Count > 0)
+                    {
+                        schema.AppendLine(",        \"required\": [");
+                        for (int i = 0; i < requiredProperties.Count; i++)
+                        {
+                            schema.Append($"          \"{requiredProperties[i]}\"");
+                            if (i < requiredProperties.Count - 1)
+                            {
+                                schema.AppendLine(",");
+                            }
+                            else
+                            {
+                                schema.AppendLine();
+                            }
+                        }
+                        schema.AppendLine("        ]");
+                    }
+                }
+                
                 schema.AppendLine("      }");
+            }
+            else if (type.IsClass && type != typeof(string))
+            {
+                // Handle nested objects
+                schema.AppendLine("      \"type\": \"object\",");
+                schema.AppendLine("      \"properties\": {");
+                
+                // Generate nested object schema
+                var requiredProperties = new List<string>();
+                GenerateObjectSchema(schema, type, 8, requiredProperties);
+                
+                schema.AppendLine("      }");
+                
+                // Add required properties for nested objects if any
+                if (requiredProperties.Count > 0)
+                {
+                    schema.AppendLine(",      \"required\": [");
+                    for (int i = 0; i < requiredProperties.Count; i++)
+                    {
+                        schema.Append($"        \"{requiredProperties[i]}\"");
+                        if (i < requiredProperties.Count - 1)
+                        {
+                            schema.AppendLine(",");
+                        }
+                        else
+                        {
+                            schema.AppendLine();
+                        }
+                    }
+                    schema.AppendLine("      ]");
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Generates schema properties for a nested object type
+        /// </summary>
+        /// <param name="schema">The schema builder</param>
+        /// <param name="type">The type to generate schema for</param>
+        /// <param name="indentLevel">Number of spaces to indent</param>
+        /// <param name="requiredProperties">List to add required property names to</param>
+        private void GenerateObjectSchema(StringBuilder schema, Type type, int indentLevel, List<string> requiredProperties)
+        {
+            var properties = type.GetProperties()
+                .Where(p => !p.GetCustomAttributes<PromptIgnoreAttribute>().Any())
+                .ToList();
+                
+            string indent = new string(' ', indentLevel);
+            
+            for (int i = 0; i < properties.Count; i++)
+            {
+                var property = properties[i];
+                var propertyAttribute = property.GetCustomAttribute<PromptPropertyAttribute>();
+                
+                // Skip properties with PromptIgnoreAttribute
+                if (property.GetCustomAttribute<PromptIgnoreAttribute>() != null)
+                {
+                    continue;
+                }
+                
+                // Check if property is required and add to required properties list
+                if (propertyAttribute?.Required ?? false)
+                {
+                    requiredProperties.Add(GetJsonPropertyName(property));
+                }
+                
+                // Add property schema
+                schema.AppendLine($"{indent}\"{GetJsonPropertyName(property)}\": {{");
+                
+                // If nullable, use type array with null
+                if (IsNullableType(property.PropertyType) || property.PropertyType.IsClass || property.PropertyType.IsInterface)
+                {
+                    schema.AppendLine($"{indent}  \"type\": [");
+                    schema.AppendLine($"{indent}    \"{GetJsonType(property.PropertyType)}\",");
+                    schema.AppendLine($"{indent}    \"null\"");
+                    schema.AppendLine($"{indent}  ],");
+                }
+                else
+                {
+                    schema.AppendLine($"{indent}  \"type\": \"{GetJsonType(property.PropertyType)}\",");
+                }
+                
+                // Add property description if available
+                if (propertyAttribute != null && !string.IsNullOrEmpty(propertyAttribute.Description))
+                {
+                    schema.AppendLine($"{indent}  \"description\": \"{propertyAttribute.Description}\",");
+                }
+                
+                // Add default value if available
+                if (propertyAttribute?.DefaultValue != null)
+                {
+                    var defaultValue = FormatJsonValue(propertyAttribute.DefaultValue, property.PropertyType);
+                    schema.AppendLine($"{indent}  \"default\": {defaultValue},");
+                }
+                
+                // Add nested type-specific constraints with correct indentation
+                var nestedSchema = new StringBuilder();
+                AddNestedTypeSpecificConstraints(nestedSchema, property, indentLevel + 2);
+                if (nestedSchema.Length > 0)
+                {
+                    schema.Append(nestedSchema);
+                }
+                
+                // Close property definition
+                schema.Append($"{indent}}}");
+                
+                // Add comma if not the last property
+                if (i < properties.Count - 1)
+                {
+                    schema.AppendLine(",");
+                }
+                else
+                {
+                    schema.AppendLine();
+                }
+            }
+        }
+        
+        /// <summary>
+        /// Adds type-specific constraints to a nested property
+        /// </summary>
+        /// <param name="schema">The schema builder</param>
+        /// <param name="property">The property</param>
+        /// <param name="indentLevel">Number of spaces to indent</param>
+        private void AddNestedTypeSpecificConstraints(StringBuilder schema, PropertyInfo property, int indentLevel)
+        {
+            var type = property.PropertyType;
+            string indent = new string(' ', indentLevel);
+            
+            if (type.IsArray || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>)))
+            {
+                // Add array-specific constraints
+                schema.AppendLine($"{indent}\"items\": {{");
+                
+                Type elementType;
+                if (type.IsArray)
+                {
+                    elementType = type.GetElementType();
+                }
+                else
+                {
+                    elementType = type.GetGenericArguments()[0];
+                }
+                
+                // Handle nullable element types
+                if (IsNullableType(elementType) || elementType.IsClass || elementType.IsInterface)
+                {
+                    schema.AppendLine($"{indent}  \"type\": [");
+                    schema.AppendLine($"{indent}    \"{GetJsonType(elementType)}\",");
+                    schema.AppendLine($"{indent}    \"null\"");
+                    schema.AppendLine($"{indent}  ]");
+                }
+                else
+                {
+                    schema.AppendLine($"{indent}  \"type\": \"{GetJsonType(elementType)}\"");
+                }
+                
+                // Handle arrays of complex objects
+                if (elementType.IsClass && elementType != typeof(string))
+                {
+                    schema.AppendLine($"{indent}  ,\"properties\": {{");
+                    var requiredProperties = new List<string>();
+                    GenerateObjectSchema(schema, elementType, indentLevel + 4, requiredProperties);
+                    schema.AppendLine($"{indent}  }}");
+                    
+                    // Add required properties for array items if any
+                    if (requiredProperties.Count > 0)
+                    {
+                        schema.AppendLine($"{indent}  ,\"required\": [");
+                        for (int i = 0; i < requiredProperties.Count; i++)
+                        {
+                            schema.Append($"{indent}    \"{requiredProperties[i]}\"");
+                            if (i < requiredProperties.Count - 1)
+                            {
+                                schema.AppendLine(",");
+                            }
+                            else
+                            {
+                                schema.AppendLine();
+                            }
+                        }
+                        schema.AppendLine($"{indent}  ]");
+                    }
+                }
+                
+                schema.AppendLine($"{indent}}}");
+            }
+            else if (type.IsClass && type != typeof(string))
+            {
+                schema.AppendLine($"{indent}\"type\": \"object\",");
+                schema.AppendLine($"{indent}\"properties\": {{");
+                
+                // Generate nested object schema
+                var requiredProperties = new List<string>();
+                GenerateObjectSchema(schema, type, indentLevel + 2, requiredProperties);
+                
+                schema.AppendLine($"{indent}}}");
+                
+                // Add required properties for nested objects if any
+                if (requiredProperties.Count > 0)
+                {
+                    schema.AppendLine($"{indent},\"required\": [");
+                    for (int i = 0; i < requiredProperties.Count; i++)
+                    {
+                        schema.Append($"{indent}  \"{requiredProperties[i]}\"");
+                        if (i < requiredProperties.Count - 1)
+                        {
+                            schema.AppendLine(",");
+                        }
+                        else
+                        {
+                            schema.AppendLine();
+                        }
+                    }
+                    schema.AppendLine($"{indent}]");
+                }
             }
         }
         
@@ -336,11 +646,24 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
         /// Generates a default example value for a type
         /// </summary>
         /// <param name="type">The type</param>
+        /// <param name="depth">Current depth of object nesting to prevent infinite recursion</param>
         /// <returns>A default example value</returns>
-        private object GenerateDefaultExampleValue(Type type)
+        private object GenerateDefaultExampleValue(Type type, int depth = 0)
         {
+            // Prevent infinite recursion with circular references
+            if (depth > 10)
+            {
+                _logger.LogWarning("Maximum depth reached when generating example for type {Type}, returning null", type.Name);
+                return null;
+            }
+            
+            // Special cases for comprehensive models
+            if (type.Name == "ComprehensiveWithdrawalProofResponse" || type.FullName == "BouwdepotInvoiceValidator.Domain.Services.ComprehensiveWithdrawalProofResponse")
+            {
+                return CreateComprehensiveWithdrawalProofExample();
+            }
             // Special cases for specific types to provide better examples
-            if (type.Name == "LineItemResponse")
+            else if (type.Name == "LineItemResponse")
             {
                 return new Dictionary<string, object>
                 {
@@ -371,6 +694,22 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
                     ["notes"] = "Installation completed on April 10, 2025",
                     ["confidence"] = 0.95
                 };
+            }
+            else if (type.Name == "DocumentAnalysis" || type.FullName?.EndsWith(".DocumentAnalysis") == true)
+            {
+                return CreateDocumentAnalysisExample();
+            }
+            else if (type.Name == "VendorInfo" || type.FullName?.EndsWith(".VendorInfo") == true)
+            {
+                return CreateVendorInfoExample();
+            }
+            else if (type.Name == "CustomerInfo" || type.FullName?.EndsWith(".CustomerInfo") == true)
+            {
+                return CreateCustomerInfoExample();
+            }
+            else if (type.Name == "DocumentLineItem" || type.FullName?.EndsWith(".DocumentLineItem") == true)
+            {
+                return CreateDocumentLineItemExample();
             }
             
             if (type == typeof(string))
@@ -411,7 +750,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
                     elementType = type.GetGenericArguments()[0];
                 }
                 
-                var list = new List<object> { GenerateDefaultExampleValue(elementType) };
+                var list = new List<object> { GenerateDefaultExampleValue(elementType, depth + 1) };
                 return list;
             }
             else if (type.IsClass && type != typeof(string))
@@ -441,7 +780,7 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
                     }
                     else
                     {
-                        exampleValue = GenerateDefaultExampleValue(property.PropertyType);
+                        exampleValue = GenerateDefaultExampleValue(property.PropertyType, depth + 1);
                     }
                     
                     instance[GetJsonPropertyName(property)] = exampleValue;
@@ -453,6 +792,215 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Schema
             {
                 return null;
             }
+        }
+        
+        /// <summary>
+        /// Creates a comprehensive example for WithdrawalProofResponse
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateComprehensiveWithdrawalProofExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["documentAnalysis"] = CreateDocumentAnalysisExample(),
+                ["constructionActivities"] = CreateConstructionActivitiesExample(),
+                ["fraudAnalysis"] = CreateFraudAnalysisExample(),
+                ["eligibilityDetermination"] = CreateEligibilityDeterminationExample(),
+                ["auditSummary"] = CreateAuditSummaryExample()
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for DocumentAnalysis
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateDocumentAnalysisExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["documentType"] = "Invoice",
+                ["confidence"] = 98,
+                ["language"] = "Dutch",
+                ["documentNumber"] = "INV-2025-0042",
+                ["issueDate"] = "2025-01-15",
+                ["dueDate"] = "2025-02-15",
+                ["totalAmount"] = 4235.00m,
+                ["currency"] = "EUR",
+                ["vendor"] = CreateVendorInfoExample(),
+                ["customer"] = CreateCustomerInfoExample(),
+                ["lineItems"] = new List<object> 
+                {
+                    CreateDocumentLineItemExample(),
+                    CreateDocumentLineItemExample("Bathroom fixtures installation", 1, 1250.00m)
+                },
+                ["subtotal"] = 3500.00m,
+                ["taxAmount"] = 735.00m,
+                ["paymentTerms"] = "Net 30 days",
+                ["notes"] = "Please reference invoice number with payment",
+                ["multipleDocumentsDetected"] = false,
+                ["detectedDocumentCount"] = 1
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for VendorInfo
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateVendorInfoExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["name"] = "Amsterdam Construction B.V.",
+                ["address"] = "Keizersgracht 123, 1015 CW Amsterdam",
+                ["kvkNumber"] = "12345678",
+                ["btwNumber"] = "NL123456789B01",
+                ["contact"] = "info@amsterdamconstruction.example.com"
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for CustomerInfo
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateCustomerInfoExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["name"] = "Jan de Vries",
+                ["address"] = "Herengracht 458, 1017 CA Amsterdam"
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for DocumentLineItem
+        /// </summary>
+        /// <param name="description">Optional description override</param>
+        /// <param name="quantity">Optional quantity override</param>
+        /// <param name="unitPrice">Optional unit price override</param>
+        /// <returns>An example object</returns>
+        private object CreateDocumentLineItemExample(string description = "Kitchen renovation labor", int quantity = 40, decimal unitPrice = 45.00m)
+        {
+            var totalPrice = quantity * unitPrice;
+            var taxRate = 21.00m;
+            var taxAmount = totalPrice * (taxRate / 100);
+            
+            return new Dictionary<string, object>
+            {
+                ["description"] = description,
+                ["quantity"] = quantity,
+                ["unitPrice"] = unitPrice,
+                ["taxRate"] = taxRate,
+                ["totalPrice"] = totalPrice,
+                ["lineItemTaxAmount"] = taxAmount,
+                ["lineItemTotalWithTax"] = totalPrice + taxAmount
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for ConstructionActivities
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateConstructionActivitiesExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["isConstructionRelatedOverall"] = true,
+                ["totalEligibleAmountCalculated"] = 3950.00m,
+                ["percentageEligibleCalculated"] = 93.27m,
+                ["detailedActivityAnalysis"] = new List<object>
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["originalDescription"] = "Kitchen renovation labor",
+                        ["categorization"] = "Interior Renovation",
+                        ["isEligible"] = true,
+                        ["eligibleAmountForItem"] = 1800.00m,
+                        ["ineligibleAmountForItem"] = 0.00m,
+                        ["confidence"] = 0.96m,
+                        ["reasoningForEligibility"] = "Kitchen renovation is a standard eligible construction activity"
+                    },
+                    new Dictionary<string, object>
+                    {
+                        ["originalDescription"] = "Bathroom fixtures installation",
+                        ["categorization"] = "Plumbing",
+                        ["isEligible"] = true,
+                        ["eligibleAmountForItem"] = 1250.00m,
+                        ["ineligibleAmountForItem"] = 0.00m,
+                        ["confidence"] = 0.98m,
+                        ["reasoningForEligibility"] = "Bathroom installation is a standard eligible construction activity"
+                    }
+                }
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for FraudAnalysis
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateFraudAnalysisExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["fraudRiskLevel"] = "Low",
+                ["fraudRiskScore"] = 0.15m,
+                ["indicatorsFound"] = new List<object>
+                {
+                    new Dictionary<string, object>
+                    {
+                        ["category"] = "Document Quality",
+                        ["description"] = "Minor discrepancy in line item total calculation",
+                        ["confidence"] = 0.65m,
+                        ["implication"] = "Likely calculation rounding error rather than deliberate fraud"
+                    }
+                },
+                ["summary"] = "Low fraud risk detected. Document appears legitimate with standard construction services and pricing."
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for EligibilityDetermination
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateEligibilityDeterminationExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["overallStatus"] = "Eligible",
+                ["decisionConfidenceScore"] = 0.95m,
+                ["totalEligibleAmountDetermined"] = 3950.00m,
+                ["totalIneligibleAmountDetermined"] = 285.00m,
+                ["totalDocumentAmountReviewed"] = 4235.00m,
+                ["rationaleCategory"] = "Standard Construction Services",
+                ["rationaleSummary"] = "Invoice contains standard eligible construction activities for kitchen and bathroom renovation.",
+                ["requiredActions"] = new List<string>
+                {
+                    "Approve withdrawal for eligible amount of €3,950.00"
+                },
+                ["notesForAuditor"] = "Vendor is known and has good compliance history"
+            };
+        }
+        
+        /// <summary>
+        /// Creates an example for AuditSummary
+        /// </summary>
+        /// <returns>An example object</returns>
+        private object CreateAuditSummaryExample()
+        {
+            return new Dictionary<string, object>
+            {
+                ["overallValidationSummary"] = "Document validated successfully as an eligible construction invoice with standard renovation activities.",
+                ["keyFindingsSummary"] = "All major line items are for eligible construction activities. 93.27% of invoice total is eligible for withdrawal.",
+                ["regulatoryComplianceNotes"] = new List<string>
+                {
+                    "Invoice complies with Dutch tax regulations",
+                    "Vendor has valid KvK and BTW numbers"
+                },
+                ["auditSupportingEvidenceReferences"] = new List<string>
+                {
+                    "Valid invoice number format and sequence",
+                    "Consistent with prior withdrawals for this project"
+                }
+            };
         }
     }
 }

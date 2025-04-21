@@ -1,5 +1,3 @@
-using System;
-
 namespace BouwdepotInvoiceValidator.Domain.Attributes
 {
     /// <summary>

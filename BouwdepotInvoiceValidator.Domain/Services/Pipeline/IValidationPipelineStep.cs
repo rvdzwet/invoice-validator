@@ -1,5 +1,3 @@
-using BouwdepotInvoiceValidator.Domain.Models;
-
 namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline
 {
     /// <summary>

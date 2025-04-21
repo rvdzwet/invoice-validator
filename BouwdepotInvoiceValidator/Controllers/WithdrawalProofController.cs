@@ -1,70 +1,152 @@
-using BouwdepotInvoiceValidator.Domain.Models;
 using BouwdepotInvoiceValidator.Domain.Services;
-using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BouwdepotInvoiceValidator.Controllers
 {
+    /// <summary>
+    /// Controller for withdrawal proof validation operations
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    [EnableCors("AllowAll")]
     public class WithdrawalProofController : ControllerBase
     {
-        private readonly IWithdrawalProofValidationService _validationService;
         private readonly ILogger<WithdrawalProofController> _logger;
+        private readonly IWithdrawalProofValidationService _validationService;
 
+        /// <summary>
+        /// Initializes a new instance of the <see cref="WithdrawalProofController"/> class
+        /// </summary>
+        /// <param name="logger">The logger</param>
+        /// <param name="validationService">The withdrawal proof validation service</param>
         public WithdrawalProofController(
-            IWithdrawalProofValidationService validationService,
-            ILogger<WithdrawalProofController> logger)
+            ILogger<WithdrawalProofController> logger,
+            IWithdrawalProofValidationService validationService)
         {
-            _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
         }
 
         /// <summary>
-        /// Validates a construction fund withdrawal proof document (invoice, receipt, or quotation)
+        /// Validates a withdrawal proof document (PDF only) and returns comprehensive validation results
         /// </summary>
-        /// <param name="file">The PDF file to validate</param>
-        /// <returns>Comprehensive validation results including extracted data, identified construction activities, fraud analysis, and an audit report</returns>
+        /// <param name="file">The document file to validate (must be a PDF)</param>
+        /// <returns>The validation result</returns>
         [HttpPost("validate")]
-        [ProducesResponseType(typeof(ValidationResult), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        [RequestFormLimits(MultipartBodyLengthLimit = 10 * 1024 * 1024)] // 10MB limit
-        public async Task<IActionResult> ValidateWithdrawalProof(IFormFile file)
+        [ProducesResponseType(typeof(ValidationContext), 200)] // Assuming ValidationContext is the correct return type based on the original code
+        [ProducesResponseType(typeof(ProblemDetails), 400)]
+        [ProducesResponseType(typeof(ProblemDetails), 415)] // Added for unsupported media type
+        [ProducesResponseType(typeof(ProblemDetails), 500)]
+        public async Task<IActionResult> ValidateWithdrawalProof(
+            IFormFile file)
         {
+            if (file == null || file.Length == 0)
+            {
+                _logger.LogWarning("No file provided or file is empty for validation request.");
+                return BadRequest("No file provided or file is empty");
+            }
+
+            // Check if the uploaded file is a PDF
+            if (file.ContentType?.ToLower() != "application/pdf")
+            {
+                _logger.LogWarning("Invalid file type received: {ContentType}. Only PDF files are accepted.", file.ContentType);
+                return StatusCode(StatusCodes.Status415UnsupportedMediaType, new ProblemDetails
+                {
+                    Title = "Unsupported Media Type",
+                    Detail = "Only PDF files are allowed.",
+                    Status = StatusCodes.Status415UnsupportedMediaType
+                });
+            }
+
             try
             {
-                if (file == null || file.Length == 0)
+                _logger.LogInformation("Processing withdrawal proof validation request for PDF file {FileName}", file.FileName);
+
+                // Create a stream from the uploaded file
+                using var fileStream = file.OpenReadStream();
+
+                // Validate the document
+                // Note: The original code passes file.ContentType to the service.
+                // Since we now only accept PDF, you might adjust the service
+                // if it previously handled multiple types based on ContentType.
+                var validationContext = await _validationService.ValidateWithdrawalProofAsync(
+                    fileStream,
+                    file.FileName,
+                    file.ContentType); // ContentType will now always be "application/pdf"
+
+                // Return the ComprehensiveValidationResult directly from the context
+                if (validationContext != null)
                 {
-                    _logger.LogWarning("No file was uploaded");
-                    return BadRequest("No file was uploaded");
+                    _logger.LogInformation("Withdrawal proof validation completed successfully for file {FileName}", file.FileName);
+                    return Ok(validationContext);
                 }
-
-                if (file.ContentType != "application/pdf" && !file.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+                else
                 {
-                    _logger.LogWarning("Invalid file type. Only PDF files are accepted");
-                    return BadRequest("Invalid file type. Only PDF files are accepted");
+                    _logger.LogWarning("ValidationContext was null for file {FileName}", file.FileName);
+                    return StatusCode(500, new ProblemDetails
+                    {
+                        Title = "Validation result not available",
+                        Detail = "The validation process completed but did not produce a result.",
+                        Status = 500
+                    });
                 }
-
-                _logger.LogInformation("Processing withdrawal proof validation request for file: {FileName}, Size: {FileSize} bytes",
-                    file.FileName, file.Length);
-
-                using var stream = new MemoryStream();
-                await file.CopyToAsync(stream);
-                stream.Position = 0;
-
-                var result = await _validationService.ValidateWithdrawalProofAsync(stream, file.FileName, file.ContentType);
-
-                return Ok(result);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error validating withdrawal proof document");
-                return StatusCode(StatusCodes.Status500InternalServerError,
-                    new { error = "An error occurred while processing the withdrawal proof document", message = ex.Message });
+                _logger.LogError(ex, "Error validating withdrawal proof file {FileName}", file.FileName);
+                return StatusCode(500, new ProblemDetails
+                {
+                    Title = "Error processing withdrawal proof",
+                    Detail = "An unexpected error occurred during validation",
+                    Status = 500
+                });
             }
         }
-       
+    }
+
+    /// <summary>
+    /// DTO for a validation issue
+    /// </summary>
+    public class ValidationIssueDto
+    {
+        /// <summary>
+        /// Issue code
+        /// </summary>
+        public string Code { get; set; }
+        
+        /// <summary>
+        /// Issue message
+        /// </summary>
+        public string Message { get; set; }
+        
+        /// <summary>
+        /// Issue severity
+        /// </summary>
+        public string Severity { get; set; }
+    }
+
+    /// <summary>
+    /// Response model for withdrawal proof validation
+    /// </summary>
+    public class WithdrawalProofValidationResponse
+    {
+        /// <summary>
+        /// Unique identifier for this validation
+        /// </summary>
+        public string ValidationId { get; set; }
+        
+        /// <summary>
+        /// Validation status
+        /// </summary>
+        public string Status { get; set; }
+        
+        /// <summary>
+        /// Summary of the validation result
+        /// </summary>
+        public string Summary { get; set; }
+        
+        /// <summary>
+        /// List of validation issues
+        /// </summary>
+        public List<ValidationIssueDto> Issues { get; set; } = new List<ValidationIssueDto>();
     }
 }

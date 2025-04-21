@@ -1,4 +1,4 @@
-﻿﻿﻿using BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models;
+﻿﻿﻿﻿﻿using BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models;
 using BouwdepotValidationValidator.Infrastructure.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -196,6 +196,15 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
             // Create request with conversation history if provided
             var request = new GeminiRequest();
             
+            // Add generation config with deterministic settings
+            request.GenerationConfig = new GenerationConfig
+            {
+                Temperature = _options.Temperature,
+                TopP = _options.TopP,
+                TopK = _options.TopK,
+                CandidateCount = _options.CandidateCount
+            };
+            
             if (conversationContext != null && conversationContext.Messages.Any())
             {
                 // Add previous messages from conversation history
@@ -282,6 +291,15 @@ namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
             
             // Create request with conversation history if provided
             var request = new GeminiRequest();
+            
+            // Add generation config with deterministic settings
+            request.GenerationConfig = new GenerationConfig
+            {
+                Temperature = _options.Temperature,
+                TopP = _options.TopP,
+                TopK = _options.TopK,
+                CandidateCount = _options.CandidateCount
+            };
             
             if (conversationContext != null && conversationContext.Messages.Any())
             {

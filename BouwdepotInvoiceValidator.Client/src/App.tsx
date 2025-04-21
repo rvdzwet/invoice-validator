@@ -12,7 +12,7 @@ import {
 } from '@mui/material';
 import theme from './theme';
 import InvoiceUpload from './components/InvoiceUpload';
-import ComprehensiveValidationView from './components/ComprehensiveValidationView';
+import ValidationResultAdapter from './components/ValidationResultAdapter';
 import { ValidationResult as ValidationResultType } from './types/models';
 import { apiService } from './services/api';
 
@@ -88,14 +88,14 @@ const App: React.FC = () => {
             
             <Grid item xs={12} md={validationResult ? 8 : 12}>
               {isLoading && !validationResult && (
-                <ComprehensiveValidationView 
-                  validationResult={null as any}
+                <ValidationResultAdapter 
+                  validationResult={null}
                   isLoading={true}
                 />
               )}
               
               {validationResult && (
-                <ComprehensiveValidationView 
+                <ValidationResultAdapter 
                   validationResult={validationResult}
                   isLoading={isLoading}
                 />

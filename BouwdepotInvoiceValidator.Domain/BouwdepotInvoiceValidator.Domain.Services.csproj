@@ -22,7 +22,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<ProjectReference Include="..\BouwdepotInvoiceValidator.Domain.Models\BouwdepotInvoiceValidator.Domain.Models.csproj" />
 		<ProjectReference Include="..\BouwdepotValidation.Infrastructure\BouwdepotValidationValidator.Infrastructure.Abstractions.csproj" />
 	</ItemGroup>
 

@@ -1,4 +1,3 @@
-using BouwdepotInvoiceValidator.Domain.Models;
 using BouwdepotValidationValidator.Infrastructure.Abstractions;
 using Microsoft.Extensions.Logging;
 
@@ -80,6 +79,8 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline
                         
                         // Process the response
                         await step.ProcessResponseAsync(context, response);
+
+
                         
                         // Reset stream position for the next step
                         documentStream.Position = 0;
@@ -120,7 +121,12 @@ namespace BouwdepotInvoiceValidator.Domain.Services.Pipeline
                     context.AddProcessingStep(step.StepName, "Step skipped", ProcessingStepStatus.Skipped);
                 }
             }
-            
+
+            context.AIModelsUsed.Add(new AIModelUsage()
+            {
+                ModelName = _llmProvider.GetMultimodalModelName()
+            });
+
             // Add final processing step
             context.AddProcessingStep("CompletePipeline", 
                 $"Document validation pipeline completed with outcome: {context.OverallOutcome}", 
