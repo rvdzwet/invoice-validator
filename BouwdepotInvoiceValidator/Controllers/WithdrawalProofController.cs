@@ -47,7 +47,7 @@ namespace BouwdepotInvoiceValidator.Controllers
 
             try
             {
-                _logger.LogInformation("Processing withdrawal proof validation request for PDF file {FileName}", file.FileName);
+                _logger.LogInformation("Processing withdrawal proof validation request for file {FileName}", file.FileName);
 
                 // Create a stream from the uploaded file
                 using var fileStream = file.OpenReadStream();

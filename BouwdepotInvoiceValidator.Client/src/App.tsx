@@ -58,8 +58,13 @@ const App: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppBar position="static" sx={{ bgcolor: '#562178' }}>
+      <AppBar position="static" sx={{ bgcolor: '#ffffff', color: 'text.primary' }}> {/* Changed bgcolor to white and set text color */}
         <Toolbar>
+          <img
+            src="https://stater.nl/media/cache/webp/b3/logo_9Gmngs0.600x600.webp" 
+            alt="Stater Logo" 
+            style={{ height: '40px', marginRight: '16px' }} 
+          />
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Withdrawal Validation Tool
           </Typography>

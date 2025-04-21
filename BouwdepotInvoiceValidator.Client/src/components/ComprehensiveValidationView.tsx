@@ -45,7 +45,7 @@ export const ComprehensiveValidationView: React.FC<ComprehensiveValidationViewPr
             Overall Status
           </Typography>
           <Chip 
-            label={eligibilityDetermination.overallStatus} 
+            label={`${eligibilityDetermination.overallStatus} (${eligibilityDetermination.decisionConfidenceScore.toFixed(0)}%)`} 
             color={getStatusColor(eligibilityDetermination.overallStatus)} 
             sx={{ fontSize: '1rem', fontWeight: 'bold' }} 
           />
@@ -91,17 +91,17 @@ export const ComprehensiveValidationView: React.FC<ComprehensiveValidationViewPr
         
         <Box sx={{ mt: 3 }}>
           <Typography variant="h6">Vendor Information</Typography>
-          <Typography>Name: {documentAnalysis.vendor.name}</Typography>
-          <Typography>Address: {documentAnalysis.vendor.address || 'N/A'}</Typography>
-          <Typography>KvK Number: {documentAnalysis.vendor.kvkNumber || 'N/A'}</Typography>
-          <Typography>BTW Number: {documentAnalysis.vendor.btwNumber || 'N/A'}</Typography>
-          <Typography>Contact: {documentAnalysis.vendor.contact || 'N/A'}</Typography>
+          <Typography>Name: {documentAnalysis.vendor?.name ?? 'N/A'}</Typography>
+          <Typography>Address: {documentAnalysis.vendor?.address ?? 'N/A'}</Typography>
+          <Typography>KvK Number: {documentAnalysis.vendor?.kvkNumber ?? 'N/A'}</Typography>
+          <Typography>BTW Number: {documentAnalysis.vendor?.btwNumber ?? 'N/A'}</Typography>
+          <Typography>Contact: {documentAnalysis.vendor?.contact ?? 'N/A'}</Typography>
         </Box>
         
         <Box sx={{ mt: 3 }}>
           <Typography variant="h6">Customer Information</Typography>
-          <Typography>Name: {documentAnalysis.customer.name}</Typography>
-          <Typography>Address: {documentAnalysis.customer.address || 'N/A'}</Typography>
+          <Typography>Name: {documentAnalysis.customer?.name ?? 'N/A'}</Typography>
+          <Typography>Address: {documentAnalysis.customer?.address ?? 'N/A'}</Typography>
         </Box>
         
         {documentAnalysis.notes && (
