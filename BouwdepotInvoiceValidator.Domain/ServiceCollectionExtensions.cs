@@ -20,22 +20,12 @@ namespace BouwdepotInvoiceValidator.Domain.Services
         public static IServiceCollection AddDocumentValidation(this IServiceCollection services)
         {
             // Register pipeline steps
-            services.AddScoped<LanguageDetectionStep>();
-            services.AddScoped<DocumentTypeVerificationStep>();
-            services.AddScoped<DocumentStructureExtractionStep>();
-            services.AddScoped<FraudDetectionStep>();
-            services.AddScoped<BouwdepotEligibilityStep>();
-            services.AddScoped<AuditReportGenerationStep>();
+            services.AddScoped<ComprehensiveWithdrawalProofValidationStep>();
             
             // Register all steps as a collection for the pipeline
             services.AddScoped<IEnumerable<IValidationPipelineStep>>(sp => new List<IValidationPipelineStep>
             {
-                sp.GetRequiredService<LanguageDetectionStep>(),
-                sp.GetRequiredService<DocumentTypeVerificationStep>(),
-                sp.GetRequiredService<DocumentStructureExtractionStep>(),
-                sp.GetRequiredService<FraudDetectionStep>(),
-                sp.GetRequiredService<BouwdepotEligibilityStep>(),
-                sp.GetRequiredService<AuditReportGenerationStep>()
+                sp.GetRequiredService<ComprehensiveWithdrawalProofValidationStep>(),
             });
             
             // Register the pipeline

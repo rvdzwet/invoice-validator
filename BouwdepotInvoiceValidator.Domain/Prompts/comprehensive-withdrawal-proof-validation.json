@@ -1,0 +1,805 @@
+{
+  "metadata": {
+    "name": "ComprehensiveWithdrawalProofValidation",
+    "version": "1.5",
+    "description": "A comprehensive prompt for validating construction fund withdrawal proof documents with simplified eligibility determination and a categorized rationale.",
+    "lastModified": "2025-04-21",
+    "author": "AI Integration Team"
+  },
+  "template": {
+    "role": "You are a specialized construction fund validator with expertise in document verification, financial analysis, construction industry standards, and regulatory compliance. Your role is to thoroughly validate documents provided as proof for construction fund (bouwdepot) withdrawal requests. Each submission must contain *exactly one* document (invoice, receipt, or quotation).",
+    "task": "Analyze the provided document submission. FIRST, verify that it contains only a single valid proof document (invoice, receipt, or quotation). If multiple documents are detected or no valid document is found, flag it as ineligible immediately. If a single valid document is present, proceed to verify document type, extract relevant information, detect potential fraud, identify construction activities, assess eligibility, and provide a comprehensive audit report. Documents containing multiple distinct invoices, receipts, or quotations within a single file are NOT allowed and must be marked as ineligible.",
+    "instructions": [
+      "**Part 1: Document Verification and Analysis**",
+      "1. **Document Count and Type Verification:** Examine the submitted file. Determine if it contains exactly one valid document (invoice, receipt, or quotation).",
+      "    - If multiple distinct documents (e.g., two invoices, an invoice and a receipt) are detected within the file, immediately set `multipleDocumentsDetected` to `true` and `detectedDocumentCount` to the number found. Set other `documentAnalysis` fields to null or N/A where appropriate, and proceed directly to the eligibility determination section to mark as ineligible.",
+      "    - If zero valid documents are detected, set `detectedDocumentCount` to 0, `multipleDocumentsDetected` to false, set other `documentAnalysis` fields to null/N/A, and proceed directly to the eligibility determination section to mark as ineligible.",
+      "    - If exactly one document is detected, set `detectedDocumentCount` to 1, `multipleDocumentsDetected` to false, and proceed with its detailed analysis.",
+      "    - For the single document found, determine its type (invoice, receipt, quotation) based on characteristics. Provide a classification with confidence score and explanation.",
+      "",
+      "2. **Language Detection:** If a single document was found, identify its primary language (e.g., Dutch, English, German, Auto) with confidence level.",
+      "",
+      "3. **Document Structure Extraction:** If a single document was found, extract key information including: Document number, Issue/Due Dates, Vendor & Customer details (name, address, registration numbers), Line items (descriptions, quantities, prices, tax), Totals (subtotal, tax, total), Payment terms/methods, Notes, and Currency.",
+      "",
+      "**Part 2: Construction Fund Eligibility Assessment (Only if exactly one document was found)**",
+      "4. **Construction Activity Identification:** For each line item in the single document, determine if it's an eligible construction/home improvement activity. Classify eligible items into specific categories. Explicitly mark ineligible items with a reason. Calculate eligible amount per item, total eligible amount, and eligible percentage of the document total.",
+      "",
+      "5. **Fraud Detection:** Analyze the single document for potential fraud indicators (visual issues, content inconsistencies, vendor issues, pricing anomalies). Provide a risk level (Low, Medium, High), score (0-100), and list detailed indicators with confidence and implication.",
+      "",
+      "**Part 3: Comprehensive Withdrawal Validation and Categorized Rationale**",
+      "6. **Overall Eligibility Determination and Categorized Rationale:**",
+      "    - Determine the `overallStatus`: 'Ineligible' if multiple/no documents found, or based on combined analysis of single document ('Eligible', 'Partially Eligible', 'Ineligible').",
+      "    - Provide a `decisionConfidenceScore` (0-100) for this final status.",
+      "    - State the `totalEligibleAmountDetermined` and `totalIneligibleAmountDetermined` (0 if ineligible due to count).",
+      "    - State the `totalDocumentAmountReviewed` (0 if multiple docs detected).",
+      "    - Select the most appropriate `rationaleCategory` from the defined enum based on the primary reason for the determined status.",
+      "    - Generate a single, comprehensive `rationaleSummary` string. This summary must explain the document count assessment, document type validity (if single), outline eligible/ineligible items, discuss fraud impact, mention vendor/date relevance, and describe the logical path to the final status. Ensure the summary aligns with the selected `rationaleCategory`. If ineligible due to document count, the summary should state only that reason.",
+      "    - List `requiredActions` based on the determination (e.g., 'Approve Eligible Amount', 'Reject Document - Multiple Documents', 'Reject Document - Ineligible Content', 'Request Further Information').",
+      "    - Add any `notesForAuditor` if necessary.",
+      "",
+      "7. **Comprehensive Audit Summary:**",
+      "    - Provide an `overallValidationSummary` including the document count check outcome.",
+      "    - Summarize `keyFindings` from all relevant analysis steps.",
+      "    - List `regulatoryComplianceNotes`.",
+      "    - Provide `auditSupportingEvidenceReferences` pointing to relevant fields in the JSON output.",
+      "",
+      "**Part 4: Output Formatting**",
+      "8. IMPORTANT: Your response MUST be a valid JSON object with the exact structure shown in the JSON schema.",
+      "9. Do not include any explanations, notes, or text outside of the JSON structure.",
+      "10. Ensure all fields are properly formatted according to their expected types. Use null for fields not applicable (e.g., if multiple docs detected)."
+    ]
+  },
+  "schema": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "required": [
+      "documentAnalysis",
+      "constructionActivities",
+      "fraudAnalysis",
+      "eligibilityDetermination",
+      "auditSummary"
+    ],
+    "properties": {
+      "documentAnalysis": {
+        "type": "object",
+        "required": [
+          "documentType",
+          "confidence",
+          "language",
+          "documentNumber",
+          "issueDate",
+          "dueDate",
+          "totalAmount",
+          "currency",
+          "vendor",
+          "customer",
+          "lineItems",
+          "subtotal",
+          "taxAmount",
+          "paymentTerms",
+          "notes",
+          "multipleDocumentsDetected",
+          "detectedDocumentCount"
+        ],
+        "properties": {
+          "documentType": {
+            "type": [ "string", "null" ],
+            "description": "Type of the *primary* document found (invoice, receipt, quotation, other, or null if multiple/none detected)."
+          },
+          "confidence": {
+            "type": [ "number", "null" ],
+            "description": "Confidence in primary document type classification (0-100), or null."
+          },
+          "language": {
+            "type": [ "string", "null" ],
+            "description": "Primary language (e.g., Dutch, English, Auto), or null."
+          },
+          "documentNumber": {
+            "type": [ "string", "null" ],
+            "description": "Invoice/receipt/quote number, or null."
+          },
+          "issueDate": {
+            "type": [ "string", "null" ],
+            "description": "Date issued (YYYY-MM-DD format), or null."
+          },
+          "dueDate": {
+            "type": [ "string", "null" ],
+            "description": "Due date (YYYY-MM-DD format), or null."
+          },
+          "totalAmount": {
+            "type": [ "number", "null" ],
+            "description": "Total amount, including tax, or null."
+          },
+          "currency": {
+            "type": [ "string", "null" ],
+            "description": "Currency code (e.g., EUR), or null."
+          },
+          "vendor": {
+            "type": "object",
+            "required": [ "name" ],
+            "description": "Details from the primary document vendor, or placeholder.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Vendor name or placeholder."
+              },
+              "address": {
+                "type": [ "string", "null" ],
+                "description": "Vendor address or null."
+              },
+              "kvkNumber": {
+                "type": [ "string", "null" ],
+                "description": "KvK number or null."
+              },
+              "btwNumber": {
+                "type": [ "string", "null" ],
+                "description": "BTW number or null."
+              },
+              "contact": {
+                "type": [ "string", "null" ],
+                "description": "Vendor contact info or null."
+              }
+            }
+          },
+          "customer": {
+            "type": "object",
+            "required": [ "name" ],
+            "description": "Details from the primary document customer, or placeholder.",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Customer name or placeholder."
+              },
+              "address": {
+                "type": [ "string", "null" ],
+                "description": "Customer address or null."
+              }
+            }
+          },
+          "lineItems": {
+            "type": [ "array", "null" ],
+            "description": "Array of extracted line items, or null.",
+            "items": {
+              "type": "object",
+              "required": [ "description", "quantity", "unitPrice", "totalPrice" ],
+              "properties": {
+                "description": { "type": "string" },
+                "quantity": { "type": "number" },
+                "unitPrice": { "type": "number" },
+                "taxRate": { "type": [ "number", "null" ] },
+                "totalPrice": { "type": "number" },
+                "lineItemTaxAmount": { "type": [ "number", "null" ] },
+                "lineItemTotalWithTax": { "type": [ "number", "null" ] }
+              }
+            }
+          },
+          "subtotal": {
+            "type": [ "number", "null" ],
+            "description": "Subtotal or null."
+          },
+          "taxAmount": {
+            "type": [ "number", "null" ],
+            "description": "Total tax amount or null."
+          },
+          "paymentTerms": {
+            "type": [ "string", "null" ],
+            "description": "Payment terms or null."
+          },
+          "notes": {
+            "type": [ "string", "null" ],
+            "description": "Notes or null."
+          },
+          "multipleDocumentsDetected": {
+            "type": "boolean",
+            "description": "True if multiple docs found."
+          },
+          "detectedDocumentCount": {
+            "type": "number",
+            "description": "Count of distinct documents."
+          }
+        }
+      },
+      "constructionActivities": {
+        "type": "object",
+        "required": [
+          "isConstructionRelatedOverall",
+          "totalEligibleAmountCalculated",
+          "percentageEligibleCalculated",
+          "detailedActivityAnalysis"
+        ],
+        "description": "Analysis of construction activities (if single document).",
+        "properties": {
+          "isConstructionRelatedOverall": {
+            "type": "boolean",
+            "description": "Whether any item is construction related."
+          },
+          "totalEligibleAmountCalculated": {
+            "type": "number",
+            "description": "Sum of eligible amounts."
+          },
+          "percentageEligibleCalculated": {
+            "type": "number",
+            "description": "Percentage eligible."
+          },
+          "detailedActivityAnalysis": {
+            "type": "array",
+            "description": "Analysis per line item, or empty array.",
+            "items": {
+              "type": "object",
+              "required": [ "originalDescription", "categorization", "isEligible", "eligibleAmountForItem", "confidence", "reasoningForEligibility" ],
+              "properties": {
+                "originalDescription": { "type": "string" },
+                "categorization": {
+                  "type": "string",
+                  "enum": [ "Structural", "Foundation", "Roofing", "Facade", "WindowsDoors", "Insulation", "Plastering", "Painting", "FlooringFixed", "Tiling", "Electrical", "Plumbing", "HVAC", "KitchenFixed", "BathroomFixed", "BuiltInElements", "EnergyEfficiency", "SecuritySystemsFixed", "PermitsFees", "ArchitectContractorFees", "SitePreparation", "WasteRemovalConstruction", "OtherConstructionRelated", "NotApplicable" ]
+                },
+                "isEligible": { "type": "boolean" },
+                "eligibleAmountForItem": { "type": "number" },
+                "ineligibleAmountForItem": { "type": "number" },
+                "confidence": { "type": "number" },
+                "reasoningForEligibility": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "fraudAnalysis": {
+        "type": "object",
+        "required": [
+          "fraudRiskLevel",
+          "fraudRiskScore",
+          "indicatorsFound",
+          "summary"
+        ],
+        "description": "Analysis for potential fraud (if single document).",
+        "properties": {
+          "fraudRiskLevel": {
+            "type": "string",
+            "description": "Overall fraud risk level or NotApplicable.",
+            "enum": [ "Low", "Medium", "High", "NotApplicable" ]
+          },
+          "fraudRiskScore": {
+            "type": "number",
+            "description": "Fraud risk score or 0."
+          },
+          "indicatorsFound": {
+            "type": "array",
+            "description": "List of indicators, or empty array.",
+            "items": {
+              "type": "object",
+              "required": [ "category", "description", "confidence", "implication" ],
+              "properties": {
+                "category": { "type": "string" },
+                "description": { "type": "string" },
+                "confidence": { "type": "number" },
+                "implication": { "type": "string" }
+              }
+            }
+          },
+          "summary": {
+            "type": "string",
+            "description": "Summary of fraud analysis."
+          }
+        }
+      },
+      "eligibilityDetermination": {
+        "type": "object",
+        "required": [
+          "overallStatus",
+          "decisionConfidenceScore",
+          "totalEligibleAmountDetermined",
+          "totalIneligibleAmountDetermined",
+          "totalDocumentAmountReviewed",
+          "rationaleCategory",
+          "rationaleSummary",
+          "requiredActions"
+        ],
+        "properties": {
+          "overallStatus": {
+            "type": "string",
+            "description": "Final overall eligibility status (Eligible, Partially Eligible, Ineligible)."
+          },
+          "decisionConfidenceScore": {
+            "type": "number",
+            "description": "Overall confidence score (0-100) in the final determination."
+          },
+          "totalEligibleAmountDetermined": {
+            "type": "number",
+            "description": "The final eligible amount (0 if ineligible)."
+          },
+          "totalIneligibleAmountDetermined": {
+            "type": "number",
+            "description": "The final ineligible amount."
+          },
+          "totalDocumentAmountReviewed": {
+            "type": "number",
+            "description": "Total amount from the primary document (0 if multiple docs)."
+          },
+          "rationaleCategory": {
+            "type": "string",
+            "description": "Categorization of the primary reason for the eligibility determination.",
+            "enum": [
+              "FullyEligible",
+              "PartiallyEligible_MixedItems",
+              "Ineligible_MultipleDocuments",
+              "Ineligible_NoValidDocumentFound",
+              "Ineligible_HighFraudRisk",
+              "Ineligible_ContainsOnlyIneligibleItems",
+              "Ineligible_InvalidDocumentType",
+              "Ineligible_Other"
+            ]
+          },
+          "rationaleSummary": {
+            "type": "string",
+            "description": "A comprehensive summary explaining the eligibility decision, aligning with the rationaleCategory."
+          },
+          "requiredActions": {
+            "type": "array",
+            "description": "Specific actions recommended.",
+            "items": { "type": "string" }
+          },
+          "notesForAuditor": {
+            "type": [ "string", "null" ],
+            "description": "Specific notes for an auditor."
+          }
+        }
+      },
+      "auditSummary": {
+        "type": "object",
+        "required": [
+          "overallValidationSummary",
+          "keyFindingsSummary",
+          "regulatoryComplianceNotes",
+          "auditSupportingEvidenceReferences"
+        ],
+        "properties": {
+          "overallValidationSummary": {
+            "type": "string",
+            "description": "Summary of validation process and outcome."
+          },
+          "keyFindingsSummary": {
+            "type": "string",
+            "description": "Summary of key findings."
+          },
+          "regulatoryComplianceNotes": {
+            "type": "array",
+            "description": "Notes on compliance.",
+            "items": { "type": "string" }
+          },
+          "auditSupportingEvidenceReferences": {
+            "type": "array",
+            "description": "References to evidence points.",
+            "items": { "type": "string" }
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "input": "Invoice example with construction activities and no fraud indicators",
+      "output": {
+        "documentAnalysis": {
+          "documentType": "invoice",
+          "confidence": 98,
+          "language": "Dutch",
+          "documentNumber": "INV-2025-0421",
+          "issueDate": "2025-04-10",
+          "dueDate": "2025-05-10",
+          "totalAmount": 4250.75,
+          "currency": "EUR",
+          "vendor": {
+            "name": "Bouwbedrijf De Vries B.V.",
+            "address": "Constructieweg 45, 3542 AG Utrecht",
+            "kvkNumber": "12345678",
+            "btwNumber": "NL123456789B01",
+            "contact": "info@bouwdevries.nl"
+          },
+          "customer": {
+            "name": "Jansen Family",
+            "address": "Voorbeeldlaan 10, 1010 AA Amsterdam"
+          },
+          "lineItems": [
+            {
+              "description": "Badkamer renovatie - Arbeid",
+              "quantity": 28,
+              "unitPrice": 85.50,
+              "totalPrice": 2394.00,
+              "taxRate": 21,
+              "lineItemTaxAmount": 502.74,
+              "lineItemTotalWithTax": 2896.74
+            },
+            {
+              "description": "Keramische tegels (wit) 10m²",
+              "quantity": 10,
+              "unitPrice": 45.75,
+              "totalPrice": 457.50,
+              "taxRate": 21,
+              "lineItemTaxAmount": 96.08,
+              "lineItemTotalWithTax": 553.58
+            },
+            {
+              "description": "Nieuwe douche-installatie",
+              "quantity": 1,
+              "unitPrice": 875.00,
+              "totalPrice": 875.00,
+              "taxRate": 21,
+              "lineItemTaxAmount": 183.75,
+              "lineItemTotalWithTax": 1058.75
+            },
+            {
+              "description": "Waterdichte kit",
+              "quantity": 2,
+              "unitPrice": 34.50,
+              "totalPrice": 69.00,
+              "taxRate": 21,
+              "lineItemTaxAmount": 14.49,
+              "lineItemTotalWithTax": 83.49
+            },
+            {
+              "description": "Afvoer bouwafval",
+              "quantity": 1,
+              "unitPrice": 95.00,
+              "totalPrice": 95.00,
+              "taxRate": 21,
+              "lineItemTaxAmount": 19.95,
+              "lineItemTotalWithTax": 114.95
+            }
+          ],
+          "subtotal": 3890.50,
+          "taxAmount": 817.01,
+          "paymentTerms": "Betaling binnen 30 dagen",
+          "notes": "Project: Woning renovatie Amsterdam",
+          "multipleDocumentsDetected": false,
+          "detectedDocumentCount": 1
+        },
+        "constructionActivities": {
+          "isConstructionRelatedOverall": true,
+          "totalEligibleAmountCalculated": 4250.75,
+          "percentageEligibleCalculated": 100.00,
+          "detailedActivityAnalysis": [
+            {
+              "originalDescription": "Badkamer renovatie - Arbeid",
+              "categorization": "BathroomFixed",
+              "isEligible": true,
+              "eligibleAmountForItem": 2394.00,
+              "ineligibleAmountForItem": 0,
+              "confidence": 99,
+              "reasoningForEligibility": "Labor directly associated with renovating a fixed part of the home (bathroom) is explicitly eligible under construction fund terms."
+            },
+            {
+              "originalDescription": "Keramische tegels (wit) 10m²",
+              "categorization": "Tiling",
+              "isEligible": true,
+              "eligibleAmountForItem": 457.50,
+              "ineligibleAmountForItem": 0,
+              "confidence": 97,
+              "reasoningForEligibility": "Ceramic tiles are permanent materials used for floor and wall finishing."
+            },
+            {
+              "originalDescription": "Nieuwe douche-installatie",
+              "categorization": "BathroomFixed",
+              "isEligible": true,
+              "eligibleAmountForItem": 875.00,
+              "ineligibleAmountForItem": 0,
+              "confidence": 99,
+              "reasoningForEligibility": "Installation of a new shower is a permanent fixture."
+            },
+            {
+              "originalDescription": "Waterdichte kit",
+              "categorization": "BathroomFixed",
+              "isEligible": true,
+              "eligibleAmountForItem": 69.00,
+              "ineligibleAmountForItem": 0,
+              "confidence": 95,
+              "reasoningForEligibility": "Waterproof sealant is a necessary material for waterproofing."
+            },
+            {
+              "originalDescription": "Afvoer bouwafval",
+              "categorization": "WasteRemovalConstruction",
+              "isEligible": true,
+              "eligibleAmountForItem": 95.00,
+              "ineligibleAmountForItem": 0,
+              "confidence": 90,
+              "reasoningForEligibility": "Removal of construction waste is a direct cost associated with renovation."
+            }
+          ]
+        },
+        "fraudAnalysis": {
+          "fraudRiskLevel": "Low",
+          "fraudRiskScore": 10,
+          "indicatorsFound": [],
+          "summary": "No significant fraud indicators were detected. The invoice is legitimate with complete details and no anomalies."
+        },
+        "eligibilityDetermination": {
+          "overallStatus": "Eligible",
+          "decisionConfidenceScore": 98,
+          "totalEligibleAmountDetermined": 4250.75,
+          "totalIneligibleAmountDetermined": 0.00,
+          "totalDocumentAmountReviewed": 4250.75,
+          "rationaleCategory": "FullyEligible",
+          "rationaleSummary": "The input file contains exactly one document, which is a valid invoice from Bouwbedrijf De Vries B.V. (KvK, BTW present). All line items (€4250.75 total) relate directly to eligible bathroom renovation activities (labor, materials, installation, waste removal), resulting in 100% eligibility. No significant fraud indicators were detected. Based on a compliant document count, valid document type, fully eligible content, and low fraud risk, the document is determined to be Eligible for the full amount with high confidence. (Category: FullyEligible)",
+          "requiredActions": [
+            "Approve withdrawal request for the full eligible amount of €4250.75."
+          ],
+          "notesForAuditor": "Validation confirmed single document submission, all items are directly related to bathroom renovation and are eligible. Vendor is registered, no fraud detected. Full amount approval recommended."
+        },
+        "auditSummary": {
+          "overallValidationSummary": "Validation of Invoice INV-2025-0421 for €4250.75 confirms its validity and 100% eligibility for construction fund withdrawal. Input contained a single document.",
+          "keyFindingsSummary": "Single document (invoice) submitted. Vendor details present. All line items are eligible construction activities (bathroom renovation). Low fraud risk.",
+          "regulatoryComplianceNotes": [
+            "Single-document submission rule met.",
+            "Vendor info includes KvK/BTW.",
+            "Invoice elements meet requirements.",
+            "Activities typically eligible under bouwdepot rules."
+          ],
+          "auditSupportingEvidenceReferences": [
+            "documentAnalysis.detectedDocumentCount",
+            "documentAnalysis.documentType",
+            "documentAnalysis.vendor.kvkNumber",
+            "constructionActivities.percentageEligibleCalculated",
+            "fraudAnalysis.fraudRiskLevel",
+            "eligibilityDetermination.overallStatus",
+            "eligibilityDetermination.totalEligibleAmountDetermined"
+          ]
+        }
+      }
+    },
+    {
+      "input": "Receipt with mixed eligible and non-eligible items and medium fraud risk",
+      "output": {
+        "documentAnalysis": {
+          "documentType": "receipt",
+          "confidence": 88,
+          "language": "Dutch",
+          "documentNumber": "BON-98765",
+          "issueDate": "2025-04-15",
+          "dueDate": null,
+          "totalAmount": 563.70,
+          "currency": "EUR",
+          "vendor": {
+            "name": "Bouwmarkt Centrum",
+            "address": "Winkelstraat 123, Amsterdam",
+            "kvkNumber": null,
+            "btwNumber": null,
+            "contact": "bouwmarktcentrum.nl"
+          },
+          "customer": {
+            "name": "Klant 456",
+            "address": null
+          },
+          "lineItems": [
+            {
+              "description": "Muurverf binnen (wit) 10L",
+              "quantity": 2,
+              "unitPrice": 89.95,
+              "totalPrice": 179.90,
+              "taxRate": null,
+              "lineItemTaxAmount": null,
+              "lineItemTotalWithTax": null
+            },
+            {
+              "description": "Verf kwasten set",
+              "quantity": 1,
+              "unitPrice": 24.95,
+              "totalPrice": 24.95,
+              "taxRate": null,
+              "lineItemTaxAmount": null,
+              "lineItemTotalWithTax": null
+            },
+            {
+              "description": "Tuinmeubel set",
+              "quantity": 1,
+              "unitPrice": 299.00,
+              "totalPrice": 299.00,
+              "taxRate": null,
+              "lineItemTaxAmount": null,
+              "lineItemTotalWithTax": null
+            },
+            {
+              "description": "LED Lampen",
+              "quantity": 5,
+              "unitPrice": 5.99,
+              "totalPrice": 29.95,
+              "taxRate": null,
+              "lineItemTaxAmount": null,
+              "lineItemTotalWithTax": null
+            },
+            {
+              "description": "Decoratieve plant",
+              "quantity": 2,
+              "unitPrice": 14.95,
+              "totalPrice": 29.90,
+              "taxRate": null,
+              "lineItemTaxAmount": null,
+              "lineItemTotalWithTax": null
+            }
+          ],
+          "subtotal": 563.70,
+          "taxAmount": null,
+          "paymentTerms": null,
+          "notes": "Kassabon",
+          "multipleDocumentsDetected": false,
+          "detectedDocumentCount": 1
+        },
+        "constructionActivities": {
+          "isConstructionRelatedOverall": true,
+          "totalEligibleAmountCalculated": 234.80,
+          "percentageEligibleCalculated": 41.65,
+          "detailedActivityAnalysis": [
+            {
+              "originalDescription": "Muurverf binnen (wit) 10L",
+              "categorization": "Painting",
+              "isEligible": true,
+              "eligibleAmountForItem": 179.90,
+              "ineligibleAmountForItem": 0,
+              "confidence": 95,
+              "reasoningForEligibility": "Interior wall paint is a material used for permanent interior finishing."
+            },
+            {
+              "originalDescription": "Verf kwasten set",
+              "categorization": "Painting",
+              "isEligible": true,
+              "eligibleAmountForItem": 24.95,
+              "ineligibleAmountForItem": 0,
+              "confidence": 80,
+              "reasoningForEligibility": "Paint brushes are necessary tools for applying eligible paint."
+            },
+            {
+              "originalDescription": "Tuinmeubel set",
+              "categorization": "NotApplicable",
+              "isEligible": false,
+              "eligibleAmountForItem": 0,
+              "ineligibleAmountForItem": 299.00,
+              "confidence": 98,
+              "reasoningForEligibility": "Garden furniture is a movable, decorative item."
+            },
+            {
+              "originalDescription": "LED Lampen",
+              "categorization": "EnergyEfficiency",
+              "isEligible": true,
+              "eligibleAmountForItem": 29.95,
+              "ineligibleAmountForItem": 0,
+              "confidence": 75,
+              "reasoningForEligibility": "LED light bulbs contribute to energy efficiency."
+            },
+            {
+              "originalDescription": "Decoratieve plant",
+              "categorization": "NotApplicable",
+              "isEligible": false,
+              "eligibleAmountForItem": 0,
+              "ineligibleAmountForItem": 29.90,
+              "confidence": 99,
+              "reasoningForEligibility": "Decorative plants are not permanent home improvements."
+            }
+          ]
+        },
+        "fraudAnalysis": {
+          "fraudRiskLevel": "Medium",
+          "fraudRiskScore": 45,
+          "indicatorsFound": [
+            {
+              "category": "Vendor",
+              "description": "Missing KvK and BTW numbers on receipt.",
+              "confidence": 70,
+              "implication": "Reduces vendor verifiability."
+            },
+            {
+              "category": "Content",
+              "description": "Potential minor calculation discrepancy.",
+              "confidence": 50,
+              "implication": "Requires caution."
+            }
+          ],
+          "summary": "Medium fraud risk assessed. Concerns are lack of formal vendor details and a minor potential calculation discrepancy, but these are typical for retail receipts."
+        },
+        "eligibilityDetermination": {
+          "overallStatus": "Partially Eligible",
+          "decisionConfidenceScore": 85,
+          "totalEligibleAmountDetermined": 234.80,
+          "totalIneligibleAmountDetermined": 328.90,
+          "totalDocumentAmountReviewed": 563.70,
+          "rationaleCategory": "PartiallyEligible_MixedItems",
+          "rationaleSummary": "The input file contains exactly one document, identified as a receipt from Bouwmarkt Centrum. Analysis shows the receipt contains both eligible (€234.80 for paint, brushes, LED bulbs - Construction Activities Summary: Painting, EnergyEfficiency) and ineligible (€328.90 for garden furniture, plant - Construction Activities Summary: NotApplicable) items, resulting in 41.65% eligibility. A medium fraud risk was noted due to missing vendor registration numbers and a potential calculation issue, but these factors are typical for a retail receipt and do not invalidate the clearly identifiable eligible items. Based on a compliant single document, mixed content eligibility, and acceptable fraud risk for the eligible portion, the document is Partially Eligible. (Category: PartiallyEligible_MixedItems)",
+          "requiredActions": [
+            "Approve withdrawal request for the eligible portion only (€234.80).",
+            "Inform the fund holder that €328.90 is ineligible (Garden furniture set, Decorative plant)."
+          ],
+          "notesForAuditor": "Partial eligibility based on line-item analysis. Non-eligible items are decorative/furniture. Medium fraud risk is typical for retail receipt and doesn't invalidate eligible items."
+        },
+        "auditSummary": {
+          "overallValidationSummary": "Validation of Receipt BON-98765 for €563.70 indicates partial eligibility (€234.80). Input contained a single document.",
+          "keyFindingsSummary": "Single document (receipt) submitted. Basic vendor details. Mixed eligible (paint, brushes, LED bulbs) and ineligible (garden furniture, plant) items. Eligible amount: €234.80. Medium fraud risk.",
+          "regulatoryComplianceNotes": [
+            "Single-document submission rule met.",
+            "Receipt acceptable proof for materials.",
+            "Partial eligibility permissible.",
+            "Eligible items align with categories."
+          ],
+          "auditSupportingEvidenceReferences": [
+            "documentAnalysis.detectedDocumentCount",
+            "documentAnalysis.documentType",
+            "constructionActivities.percentageEligibleCalculated",
+            "eligibilityDetermination.totalEligibleAmountDetermined",
+            "eligibilityDetermination.totalIneligibleAmountDetermined",
+            "fraudAnalysis.fraudRiskLevel",
+            "eligibilityDetermination.rationaleCategory"
+          ]
+        }
+      }
+    },
+    {
+      "input": "PDF with two separate receipts included in one file",
+      "output": {
+        "documentAnalysis": {
+          "documentType": null,
+          "confidence": null,
+          "language": null,
+          "documentNumber": null,
+          "issueDate": null,
+          "dueDate": null,
+          "totalAmount": null,
+          "currency": null,
+          "vendor": {
+            "name": "Multiple Documents Submitted",
+            "address": null,
+            "kvkNumber": null,
+            "btwNumber": null,
+            "contact": null
+          },
+          "customer": {
+            "name": "Not Applicable",
+            "address": null
+          },
+          "lineItems": null,
+          "subtotal": null,
+          "taxAmount": null,
+          "paymentTerms": null,
+          "notes": null,
+          "multipleDocumentsDetected": true,
+          "detectedDocumentCount": 2
+        },
+        "constructionActivities": {
+          "isConstructionRelatedOverall": false,
+          "totalEligibleAmountCalculated": 0.00,
+          "percentageEligibleCalculated": 0.00,
+          "detailedActivityAnalysis": []
+        },
+        "fraudAnalysis": {
+          "fraudRiskLevel": "NotApplicable",
+          "fraudScore": 0,
+          "indicatorsFound": [],
+          "summary": "Detailed fraud analysis was not performed as multiple documents were detected."
+        },
+        "eligibilityDetermination": {
+          "overallStatus": "Ineligible",
+          "decisionConfidenceScore": 100,
+          "totalEligibleAmountDetermined": 0.00,
+          "totalIneligibleAmountDetermined": 0.00,
+          "totalDocumentAmountReviewed": 0.00,
+          "rationaleCategory": "Ineligible_MultipleDocuments",
+          "rationaleSummary": "The input file was assessed and found to contain multiple distinct documents (detectedDocumentCount: 2). According to the processing rules, each submission must contain exactly one document. Therefore, the submission is automatically determined to be Ineligible based solely on the non-compliant document count. No further detailed analysis of document content, activities, or potential fraud was performed. (Category: Ineligible_MultipleDocuments)",
+          "requiredActions": [
+            "Reject Document - Multiple Documents",
+            "Inform user: Submit each document separately."
+          ],
+          "notesForAuditor": "Submission rejected solely for containing multiple documents, violating input policy. Content analysis skipped."
+        },
+        "auditSummary": {
+          "overallValidationSummary": "The submitted file contains multiple distinct documents, violating the 'single document per submission' policy. The submission is marked as ineligible without detailed content analysis.",
+          "keyFindingsSummary": "Multiple documents detected (detectedDocumentCount: 2). Submission is ineligible based on document count policy.",
+          "regulatoryComplianceNotes": [
+            "Submission violates the technical requirement of one document per file."
+          ],
+          "auditSupportingEvidenceReferences": [
+            "documentAnalysis.multipleDocumentsDetected",
+            "documentAnalysis.detectedDocumentCount",
+            "eligibilityDetermination.overallStatus",
+            "eligibilityDetermination.rationaleCategory",
+            "eligibilityDetermination.rationaleSummary"
+          ]
+        }
+      }
+    }
+  ]
+}

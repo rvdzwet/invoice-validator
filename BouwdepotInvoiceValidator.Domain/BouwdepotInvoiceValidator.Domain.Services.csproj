@@ -7,71 +7,18 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <None Remove="Prompts\DocumentAnalysis\language-detection.json" />
-	  <None Remove="Prompts\WithdrawalProofValidation\comprehensive-withdrawal-proof-validation.json" />
+	  <None Remove="Prompts\comprehensive-withdrawal-proof-validation.json" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Content Include="Prompts\ComprehensiveDocumentIntelligence.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\DocumentAnalysis\document-type-verification-images.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\DocumentAnalysis\document-type-verification.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\DocumentAnalysis\fraud-detection.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\DocumentAnalysis\language-detection.json">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
-		<Content Include="Prompts\DocumentAnalysis\line-item-analysis.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\DocumentAnalysis\multi-modal-home-improvement.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\InvoiceExtraction\invoice-header.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\InvoiceExtraction\invoice-line-items.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
-		<Content Include="Prompts\InvoiceExtraction\invoice-parties.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-		</Content>
+	  <Content Include="Prompts\comprehensive-withdrawal-proof-validation.json">
+	    <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+	  </Content>
 	</ItemGroup>
 
 	<ItemGroup>
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.3" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.3" />
-	</ItemGroup>
-
-	<ItemGroup>
-		<Page Include="Prompts\ComprehensiveDocumentIntelligence.json" />
-		<Page Include="Prompts\WithdrawalProofValidation\comprehensive-withdrawal-proof-validation.json">
-		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Page>
 	</ItemGroup>
 
 	<ItemGroup>

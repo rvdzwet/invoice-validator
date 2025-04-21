@@ -1,13 +1,10 @@
 using Microsoft.Extensions.Logging;
-using BouwdepotValidationValidator.Infrastructure.Abstractions;
+
 using BouwdepotInvoiceValidator.Domain.Models;
-using System.Text.Json;
-using System.Text;
+
 using System.Diagnostics;
 using static BouwdepotInvoiceValidator.Domain.Services.InvoiceValidationHelpers;
-using BouwdepotInvoiceValidator.Domain.Services.Services;
-using BouwdepotInvoiceValidator.Domain.Models.AdvancedDocumentAnalysis;
-using BouwdepotInvoiceValidator.Domain.Services.Schema;
+
 using BouwdepotInvoiceValidator.Domain.Services.Pipeline;
 
 namespace BouwdepotInvoiceValidator.Domain.Services
