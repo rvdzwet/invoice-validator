@@ -12,6 +12,7 @@ import {
 } from '@mui/material';
 import theme from './theme';
 import InvoiceUpload from './components/InvoiceUpload';
+import { WithdrawalProofUpload } from './components/WithdrawalProofUpload';
 import ValidationResultAdapter from './components/ValidationResultAdapter';
 import { ValidationResult as ValidationResultType } from './types/models';
 import { apiService } from './services/api';
@@ -20,18 +21,20 @@ import { apiService } from './services/api';
  * Main application component
  */
 const App: React.FC = () => {
-  const [validationResult, setValidationResult] = useState<ValidationResultType | null>(null);
+  const [validationResult, setValidationResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Handle validation completion from the InvoiceUpload component
+   * Handle validation context from WithdrawalProofUpload component
    */
-  const handleValidationComplete = async (response: {
-    validationResult: ValidationResultType;
-    auditReport: any;
-  }) => {
-    setValidationResult(response.validationResult);
+
+  /**
+   * Handle validation context from WithdrawalProofUpload component
+   */
+  const handleValidationContextReceived = (validationContext: any) => {
+    console.log('Withdrawal proof validation complete:', validationContext);
+    setValidationResult(validationContext);
     setIsLoading(false);
     setError(null);
   };
@@ -58,18 +61,12 @@ const App: React.FC = () => {
       <AppBar position="static" sx={{ bgcolor: '#562178' }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
-            Bouwdepot Invoice Validator
+            Withdrawal Validation Tool
           </Typography>
         </Toolbar>
       </AppBar>
       <Container maxWidth="lg">
         <Box sx={{ my: 4 }}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            Invoice Validation Tool
-          </Typography>
-          <Typography variant="subtitle1" color="text.secondary" gutterBottom>
-            Upload an invoice PDF to validate it for home improvement expenses
-          </Typography>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
@@ -79,8 +76,8 @@ const App: React.FC = () => {
 
           <Grid container spacing={3}>
             <Grid item xs={12} md={validationResult ? 4 : 12}>
-              <InvoiceUpload 
-                onValidationComplete={handleValidationComplete}
+              <WithdrawalProofUpload 
+                onValidationComplete={handleValidationContextReceived}
                 onValidationStart={handleValidationStart}
                 onValidationError={handleValidationError}
               />

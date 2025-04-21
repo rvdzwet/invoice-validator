@@ -4,7 +4,7 @@
 export interface ComprehensiveWithdrawalProofResponse {
   documentAnalysis: DocumentAnalysis;
   constructionActivities: ConstructionActivities;
-  fraudAnalysis: FraudAnalysis;
+  fraudAnalysis: FraudAnalysis | null; // Allow fraudAnalysis to be null
   eligibilityDetermination: EligibilityDetermination;
   auditSummary: AuditSummary;
 }

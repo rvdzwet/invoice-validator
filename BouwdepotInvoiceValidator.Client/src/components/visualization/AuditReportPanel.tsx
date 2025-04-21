@@ -315,13 +315,13 @@ const AuditReportPanel: React.FC<AuditReportPanelProps> = ({ auditReport }) => {
                       </TableCell>
                       <TableCell>
                         <Chip 
-                          label={regulation.complianceStatus}
+                          label={regulation.complianceStatus ?? 'Unknown'} // Display 'Unknown' if null/undefined
                           color={
-                            regulation.complianceStatus.toLowerCase().includes('compliant') ? 
+                            typeof regulation.complianceStatus === 'string' && regulation.complianceStatus.toLowerCase().includes('compliant') ? 
                               "success" : 
-                            regulation.complianceStatus.toLowerCase().includes('partial') ? 
+                            typeof regulation.complianceStatus === 'string' && regulation.complianceStatus.toLowerCase().includes('partial') ? 
                               "warning" : 
-                              "error"
+                              "error" // Default to error if not string or other status
                           }
                           size="small"
                         />
@@ -455,10 +455,10 @@ const AuditReportPanel: React.FC<AuditReportPanelProps> = ({ auditReport }) => {
                   </Typography>
                   <Typography variant="body1">
                     {typeof value === 'number' && 
-                     (key.toLowerCase().includes('percentage') || 
+                     (typeof key === 'string' && (key.toLowerCase().includes('percentage') || 
                       key.toLowerCase().includes('score') || 
-                      key.toLowerCase().includes('confidence')) ? 
-                      `${value.toFixed(2)}%` : value.toString()}
+                      key.toLowerCase().includes('confidence'))) ? 
+                      `${value.toFixed(2)}%` : value?.toString() ?? ''} 
                   </Typography>
                 </Grid>
               ))}

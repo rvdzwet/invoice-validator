@@ -3,44 +3,108 @@ import { Box, CircularProgress, Typography } from '@mui/material';
 import { ValidationResult } from '../types/models';
 import { ComprehensiveWithdrawalProofResponse } from '../types/comprehensiveModels';
 import { ComprehensiveValidationView } from './ComprehensiveValidationView';
+import { ValidationContextView } from './ValidationContextView';
+
+// Define ValidationContext interface to match the backend response
+interface ValidationContext {
+  id: string;
+  inputDocument: {
+    fileName: string;
+    fileSizeBytes: number;
+    fileType: string;
+    uploadTimestamp: string;
+  };
+  comprehensiveValidationResult: ComprehensiveWithdrawalProofResponse;
+  overallOutcome: string;
+  overallOutcomeSummary: string;
+  processingSteps: Array<{
+    stepName: string;
+    description: string;
+    status: string;
+    timestamp: string;
+  }>;
+  issues: Array<{
+    issueType: string;
+    description: string;
+    severity: string;
+    field: string | null;
+    timestamp: string;
+    stackTrace: string | null;
+  }>;
+  aiModelsUsed: Array<{
+    modelName: string;
+    modelVersion: string;
+    operation: string;
+    tokenCount: number;
+    timestamp: string;
+  }>;
+  validationResults: Array<{
+    ruleId: string;
+    ruleName: string;
+    description: string;
+    result: boolean;
+    severity: string;
+    message: string;
+  }>;
+  elapsedTime: string;
+}
 
 interface ValidationResultAdapterProps {
-  validationResult: ValidationResult | null;
+  validationResult: ValidationResult | ValidationContext | null;
   isLoading?: boolean;
 }
 
 /**
- * Adapter component that handles legacy ValidationResult types and provides a compatibility
- * layer with the ComprehensiveValidationView component
+ * Adapter component that handles both ValidationResult and ValidationContext types
+ * and provides a compatibility layer with the appropriate view components
  */
 const ValidationResultAdapter: React.FC<ValidationResultAdapterProps> = ({ 
   validationResult, 
   isLoading = false 
 }) => {
-  if (isLoading && !validationResult) {
-    return (
-      <Box display="flex" justifyContent="center" alignItems="center" height="400px">
-        <CircularProgress />
-        <Typography variant="h6" sx={{ ml: 2 }}>
-          Processing document...
-        </Typography>
-      </Box>
-    );
-  }
+  // Add debug logging to help identify the type of result we're getting
+  console.log('ValidationResultAdapter received result:', validationResult);
+  // if (isLoading && !validationResult) {
+  //   return (
+  //     <Box display="flex" justifyContent="center" alignItems="center" height="400px">
+  //       <CircularProgress />
+  //       <Typography variant="h6" sx={{ ml: 2 }}>
+  //         Processing document...
+  //       </Typography>
+  //     </Box>
+  //   );
+  // }
   
   if (!validationResult) {
     return null;
   }
 
-  // Extract invoice data from validationResult
-  const invoice = validationResult.extractedInvoice;
+  // Check if this is a ValidationContext (from withdrawal proof validation)
+  const isValidationContext = (result: any): result is ValidationContext => {
+    return result && 
+      typeof result === 'object' &&
+      'comprehensiveValidationResult' in result && 
+      'overallOutcome' in result;
+  };
+
+  // If this is a ValidationContext, pass it directly to ValidationContextView
+  if (isValidationContext(validationResult)) {
+    console.log('Rendering ValidationContext result', validationResult);
+    return <ValidationContextView validationContext={validationResult} />;
+  }
+
+  // Otherwise, handle it as a regular ValidationResult
+  console.log('Rendering adapted ValidationResult', validationResult);
+
+  // Extract invoice data from the ValidationResult type
+  const invoice = (validationResult as ValidationResult).extractedInvoice;
 
   // Convert legacy ValidationResult to a simplified ComprehensiveWithdrawalProofResponse
   // This is a basic adapter - you may need to expand this mapping based on your needs
   const adaptedResponse: ComprehensiveWithdrawalProofResponse = {
     documentAnalysis: {
-      documentType: validationResult.detectedDocumentType || null,
-      confidence: validationResult.documentVerificationConfidence || null,
+      documentType: validationResult.detectedDocumentType ? String(validationResult.detectedDocumentType) : null,
+      confidence: validationResult.documentVerificationConfidence ? Number(validationResult.documentVerificationConfidence) : null,
       language: null,
       documentNumber: invoice?.invoiceNumber || null,
       issueDate: invoice?.invoiceDate || null,
@@ -48,24 +112,24 @@ const ValidationResultAdapter: React.FC<ValidationResultAdapterProps> = ({
       totalAmount: invoice?.totalAmount || null,
       currency: invoice?.totalAmount ? (invoice.vatAmount ? (invoice.totalAmount > 0 ? 'EUR' : null) : null) : null,
       vendor: {
-        name: invoice?.vendorName || 'Unknown Vendor',
-        address: invoice?.vendorAddress || null,
-        kvkNumber: invoice?.vendorKvkNumber || null,
-        btwNumber: invoice?.vendorBtwNumber || null,
+        name: invoice?.vendorName ? String(invoice.vendorName) : 'Unknown Vendor',
+        address: invoice?.vendorAddress ? String(invoice.vendorAddress) : null,
+        kvkNumber: invoice?.vendorKvkNumber ? String(invoice.vendorKvkNumber) : null,
+        btwNumber: invoice?.vendorBtwNumber ? String(invoice.vendorBtwNumber) : null,
         contact: null
       },
       customer: {
         name: 'Customer', // Invoice doesn't appear to have customer name
         address: null
       },
-      lineItems: invoice?.lineItems?.map(item => ({
-        description: item.description,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        taxRate: item.vatRate,
-        totalPrice: item.totalPrice,
-        lineItemTaxAmount: item.vatRate ? (item.totalPrice * (item.vatRate / 100)) : null,
-        lineItemTotalWithTax: item.vatRate ? (item.totalPrice * (1 + item.vatRate / 100)) : null
+      lineItems: invoice?.lineItems?.filter(item => item.description != null).map(item => ({
+        description: String(item.description || "Unnamed Item"),
+        quantity: Number(item.quantity || 0),
+        unitPrice: Number(item.unitPrice || 0),
+        taxRate: item.vatRate ? Number(item.vatRate) : null,
+        totalPrice: Number(item.totalPrice || 0),
+        lineItemTaxAmount: item.vatRate && item.totalPrice ? (Number(item.totalPrice) * (Number(item.vatRate) / 100)) : null,
+        lineItemTotalWithTax: item.vatRate && item.totalPrice ? (Number(item.totalPrice) * (1 + Number(item.vatRate) / 100)) : null
       })) || null,
       subtotal: invoice?.totalAmount ? (invoice.totalAmount - invoice.vatAmount) : null,
       taxAmount: invoice?.vatAmount || null,
@@ -111,20 +175,32 @@ const ValidationResultAdapter: React.FC<ValidationResultAdapterProps> = ({
         : 'NotApplicable',
       fraudRiskScore: validationResult.fraudDetection?.fraudRiskScore || 0,
       indicatorsFound: validationResult.fraudDetection?.detectedIndicators 
-        ? validationResult.fraudDetection.detectedIndicators.map(indicator => ({
-            category: typeof indicator.category === 'number' 
-              ? ['DocumentManipulation', 'ContentInconsistency', 'AnomalousPricing', 'VendorIssue', 
-                 'HistoricalPattern', 'DigitalArtifact', 'ContextualMismatch', 'BehavioralFlag'][indicator.category] 
-              : String(indicator.category),
-            description: indicator.description || 'No description',
-            confidence: indicator.confidence !== undefined ? indicator.confidence * 100 : 100,
-            implication: indicator.evidence || 'No implication specified'
-          })) 
+        ? validationResult.fraudDetection.detectedIndicators.map(indicator => {
+            // Ensure category is properly handled
+            let categoryText: string;
+            if (typeof indicator.category === 'number' && indicator.category >= 0 && indicator.category < 8) {
+              categoryText = ['DocumentManipulation', 'ContentInconsistency', 'AnomalousPricing', 'VendorIssue', 
+                'HistoricalPattern', 'DigitalArtifact', 'ContextualMismatch', 'BehavioralFlag'][indicator.category];
+            } else if (indicator.category) {
+              categoryText = String(indicator.category);
+            } else {
+              categoryText = 'Unknown';
+            }
+            
+            return {
+              category: categoryText,
+              description: indicator.description ? String(indicator.description) : 'No description',
+              confidence: indicator.confidence !== undefined ? Number(indicator.confidence) * 100 : 100,
+              implication: indicator.evidence ? String(indicator.evidence) : 'No implication specified'
+            };
+          }) 
         : [],
-      summary: validationResult.fraudDetection?.recommendedAction || 'No fraud analysis available'
+      summary: validationResult.fraudDetection?.recommendedAction 
+        ? String(validationResult.fraudDetection.recommendedAction) 
+        : 'No fraud analysis available'
     },
     eligibilityDetermination: {
-      overallStatus: validationResult.meetsApprovalThreshold ? 'Eligible' : 'Ineligible',
+      overallStatus: validationResult.meetsApprovalThreshold === true ? 'Eligible' : 'Ineligible' as 'Eligible' | 'Partially Eligible' | 'Ineligible',
       decisionConfidenceScore: validationResult.confidenceScore || 100,
       totalEligibleAmountDetermined: validationResult.purchaseAnalysis?.homeImprovementPercentage 
         ? (invoice?.totalAmount || 0) * (validationResult.purchaseAnalysis.homeImprovementPercentage / 100) 
@@ -133,16 +209,33 @@ const ValidationResultAdapter: React.FC<ValidationResultAdapterProps> = ({
         ? (invoice?.totalAmount || 0) * (1 - validationResult.purchaseAnalysis.homeImprovementPercentage / 100) 
         : (invoice?.totalAmount || 0),
       totalDocumentAmountReviewed: invoice?.totalAmount || 0,
-      rationaleCategory: validationResult.purchaseAnalysis?.primaryPurpose || 'Unknown',
-      rationaleSummary: validationResult.detailedReasoning || validationResult.purchaseAnalysis?.summary || 'No validation summary available',
-      requiredActions: validationResult.fraudDetection?.suggestedVerificationSteps || [],
-      notesForAuditor: validationResult.auditReport?.executiveSummary || null
+      rationaleCategory: validationResult.purchaseAnalysis?.primaryPurpose 
+        ? String(validationResult.purchaseAnalysis.primaryPurpose) 
+        : 'Unknown',
+      rationaleSummary: 
+        (validationResult.detailedReasoning ? String(validationResult.detailedReasoning) : null) || 
+        (validationResult.purchaseAnalysis?.summary ? String(validationResult.purchaseAnalysis.summary) : null) || 
+        'No validation summary available',
+      requiredActions: validationResult.fraudDetection?.suggestedVerificationSteps 
+        ? validationResult.fraudDetection.suggestedVerificationSteps.map(step => 
+            typeof step === 'string' ? step : String(step)
+          ) 
+        : [],
+      notesForAuditor: validationResult.auditReport?.executiveSummary 
+        ? String(validationResult.auditReport.executiveSummary) 
+        : null
     },
     auditSummary: {
-      overallValidationSummary: validationResult.auditReport?.executiveSummary || 'No validation summary available',
-      keyFindingsSummary: validationResult.purchaseAnalysis?.summary || 'No key findings available',
+      overallValidationSummary: validationResult.auditReport?.executiveSummary 
+        ? String(validationResult.auditReport.executiveSummary) 
+        : 'No validation summary available',
+      keyFindingsSummary: validationResult.purchaseAnalysis?.summary 
+        ? String(validationResult.purchaseAnalysis.summary) 
+        : 'No key findings available',
       regulatoryComplianceNotes: validationResult.auditReport?.applicableRegulations 
-        ? validationResult.auditReport.applicableRegulations.map(reg => reg.description) 
+        ? validationResult.auditReport.applicableRegulations.map(reg => 
+            reg.description ? String(reg.description) : 'Regulation details not available'
+          ) 
         : [],
       auditSupportingEvidenceReferences: []
     }

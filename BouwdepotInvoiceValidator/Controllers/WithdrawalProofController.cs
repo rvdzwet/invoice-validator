@@ -45,18 +45,6 @@ namespace BouwdepotInvoiceValidator.Controllers
                 return BadRequest("No file provided or file is empty");
             }
 
-            // Check if the uploaded file is a PDF
-            if (file.ContentType?.ToLower() != "application/pdf")
-            {
-                _logger.LogWarning("Invalid file type received: {ContentType}. Only PDF files are accepted.", file.ContentType);
-                return StatusCode(StatusCodes.Status415UnsupportedMediaType, new ProblemDetails
-                {
-                    Title = "Unsupported Media Type",
-                    Detail = "Only PDF files are allowed.",
-                    Status = StatusCodes.Status415UnsupportedMediaType
-                });
-            }
-
             try
             {
                 _logger.LogInformation("Processing withdrawal proof validation request for PDF file {FileName}", file.FileName);

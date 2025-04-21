@@ -151,13 +151,13 @@ export const ComprehensiveValidationView: React.FC<ComprehensiveValidationViewPr
         
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}>
-            <Typography>Construction Related Overall: {constructionActivities.isConstructionRelatedOverall ? 'Yes' : 'No'}</Typography>
+            <Typography>Construction Related Overall: {constructionActivities?.isConstructionRelatedOverall ? 'Yes' : 'No'}</Typography>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Typography>Eligible Amount: {constructionActivities.totalEligibleAmountCalculated.toFixed(2)}</Typography>
+            <Typography>Eligible Amount: {(constructionActivities?.totalEligibleAmountCalculated ?? 0).toFixed(2)}</Typography>
           </Grid>
           <Grid item xs={12} md={4}>
-            <Typography>Eligible Percentage: {constructionActivities.percentageEligibleCalculated.toFixed(2)}%</Typography>
+            <Typography>Eligible Percentage: {(constructionActivities?.percentageEligibleCalculated ?? 0).toFixed(2)}%</Typography>
           </Grid>
         </Grid>
         
@@ -175,7 +175,7 @@ export const ComprehensiveValidationView: React.FC<ComprehensiveValidationViewPr
             </TableRow>
           </TableHead>
           <TableBody>
-            {constructionActivities.detailedActivityAnalysis.map((activity, index) => (
+            {(constructionActivities?.detailedActivityAnalysis ?? []).map((activity, index) => (
               <TableRow key={index}>
                 <TableCell>{activity.originalDescription}</TableCell>
                 <TableCell>{activity.categorization}</TableCell>
@@ -197,45 +197,53 @@ export const ComprehensiveValidationView: React.FC<ComprehensiveValidationViewPr
       </Paper>
       
       {/* Fraud Analysis Section */}
-      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h5" gutterBottom>Fraud Analysis</Typography>
-        <Divider sx={{ mb: 2 }} />
-        
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-          <Box>
-            <Typography variant="subtitle1" display="inline">
-              Fraud Risk Level: 
-            </Typography>
-            <Chip 
-              label={fraudAnalysis.fraudRiskLevel} 
-              color={getFraudLevelColor(fraudAnalysis.fraudRiskLevel)} 
-              sx={{ ml: 1 }} 
-            />
+      {/* Render this section only if fraudAnalysis is not null */}
+      {fraudAnalysis && (
+        <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+          <Typography variant="h5" gutterBottom>Fraud Analysis</Typography>
+          <Divider sx={{ mb: 2 }} />
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Box>
+              <Typography variant="subtitle1" display="inline">
+                Fraud Risk Level: 
+              </Typography>
+              <Chip 
+                // Safely access fraudRiskLevel, default to 'N/A'
+                label={fraudAnalysis?.fraudRiskLevel ?? 'N/A'} 
+                // Safely get color, default to 'default'
+                color={getFraudLevelColor(fraudAnalysis?.fraudRiskLevel ?? 'N/A')} 
+                sx={{ ml: 1 }} 
+              />
+            </Box>
+            {/* Safely access fraudRiskScore, default to 0 */}
+            <Typography variant="subtitle1">Fraud Risk Score: {fraudAnalysis?.fraudRiskScore ?? 0}</Typography>
           </Box>
-          <Typography variant="subtitle1">Fraud Risk Score: {fraudAnalysis.fraudRiskScore}</Typography>
-        </Box>
-        
-        <Typography variant="body1" paragraph>
-          {fraudAnalysis.summary}
-        </Typography>
-        
-        {fraudAnalysis.indicatorsFound.length > 0 && (
-          <>
-            <Typography variant="h6" sx={{ mt: 3 }}>Fraud Indicators</Typography>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Category</TableCell>
-                  <TableCell>Description</TableCell>
-                  <TableCell align="right">Confidence</TableCell>
-                  <TableCell>Implication</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {fraudAnalysis.indicatorsFound.map((indicator, index) => (
-                  <TableRow key={index}>
-                    <TableCell>{indicator.category}</TableCell>
-                    <TableCell>{indicator.description}</TableCell>
+          
+          {/* Safely access summary, default to empty string */}
+          <Typography variant="body1" paragraph>
+            {fraudAnalysis?.summary ?? ''}
+          </Typography>
+          
+          {/* Check if indicatorsFound exists and has items */}
+          {(fraudAnalysis?.indicatorsFound?.length ?? 0) > 0 && (
+            <>
+              <Typography variant="h6" sx={{ mt: 3 }}>Fraud Indicators</Typography>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Category</TableCell>
+                    <TableCell>Description</TableCell>
+                    <TableCell align="right">Confidence</TableCell>
+                    <TableCell>Implication</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {/* Safely map over indicatorsFound, default to empty array */}
+                  {(fraudAnalysis?.indicatorsFound ?? []).map((indicator, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{indicator.category}</TableCell>
+                      <TableCell>{indicator.description}</TableCell>
                     <TableCell align="right">{indicator.confidence.toFixed(0)}%</TableCell>
                     <TableCell>{indicator.implication}</TableCell>
                   </TableRow>
@@ -245,6 +253,7 @@ export const ComprehensiveValidationView: React.FC<ComprehensiveValidationViewPr
           </>
         )}
       </Paper>
+      )} {/* Add missing closing parenthesis for the fraudAnalysis conditional rendering */}
       
       {/* Eligibility Determination Section */}
       <Paper elevation={3} sx={{ p: 3, mb: 3 }}>

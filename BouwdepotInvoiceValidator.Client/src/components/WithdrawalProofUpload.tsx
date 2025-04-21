@@ -57,10 +57,21 @@ interface ValidationContext {
   elapsedTime: string;
 }
 
+// Props interface
+interface WithdrawalProofUploadProps {
+  onValidationComplete?: (validationContext: ValidationContext) => void;
+  onValidationStart?: () => void;
+  onValidationError?: (errorMessage: string) => void;
+}
+
 /**
  * Component for uploading and validating withdrawal proof documents
  */
-export const WithdrawalProofUpload: React.FC = () => {
+export const WithdrawalProofUpload: React.FC<WithdrawalProofUploadProps> = ({ 
+  onValidationComplete,
+  onValidationStart,
+  onValidationError
+}) => {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,19 +92,42 @@ export const WithdrawalProofUpload: React.FC = () => {
    */
   const handleSubmit = async () => {
     if (!file) {
-      setError('Please select a file to upload');
+      const errorMsg = 'Please select a file to upload';
+      setError(errorMsg);
+      if (onValidationError) {
+        onValidationError(errorMsg);
+      }
       return;
     }
 
     setLoading(true);
     setError(null);
     
+    // Notify parent component that validation has started
+    if (onValidationStart) {
+      onValidationStart();
+    }
+    
     try {
       const result = await apiService.validateWithdrawalProof(file);
+      console.log('Withdrawal proof validation result:', result);
+      
+      // Set local state
       setValidationContext(result);
+      
+      // Pass result to parent component if callback provided
+      if (onValidationComplete) {
+        onValidationComplete(result);
+      }
     } catch (err) {
       console.error('Validation error:', err);
-      setError('An error occurred during validation. Please try again.');
+      const errorMsg = 'An error occurred during validation. Please try again.';
+      setError(errorMsg);
+      
+      // Pass error to parent component if callback provided
+      if (onValidationError) {
+        onValidationError(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -150,7 +184,8 @@ export const WithdrawalProofUpload: React.FC = () => {
         </Typography>
       </Paper>
       
-      {validationContext && (
+      {/* Only render the ValidationContextView if we're not using the parent's callback */}
+      {validationContext && !onValidationComplete && (
         <ValidationContextView validationContext={validationContext} />
       )}
     </Box>
