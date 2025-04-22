@@ -1,6 +1,8 @@
-using BouwdepotInvoiceValidator.Domain.Services;
+using BouwdepotInvoiceValidator.Domain.Services; // Corrected namespace for AddDocumentValidation
+using BouwdepotInvoiceValidator.Infrastructure.Providers.Google; // For Gemini services
+using BouwdepotInvoiceValidator.Infrastructure.Ollama; // Corrected namespace for Ollama services
 using Microsoft.OpenApi.Models;
-using Serilog; // Added for Serilog
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args); // Moved builder creation up
 
@@ -49,12 +51,30 @@ try
 
     builder.Services.AddSingleton<ILoggerFactory, LoggerFactory>();
 
+    // Register domain services (depends on ILLMProvider being registered below)
     builder.Services.AddDocumentValidation();
-    // --- Register Gemini Client ---
-    builder.Services.AddGemini(options =>
+
+    // --- Conditionally Register LLM Provider ---
+    string? llmProvider = builder.Configuration.GetValue<string>("LlmProvider");
+    Log.Information("Configured LLM Provider: {LlmProvider}", llmProvider);
+
+    switch (llmProvider?.ToLowerInvariant())
     {
-        builder.Configuration.GetSection("Gemini").Bind(options);
-    });
+        case "ollama":
+            Log.Information("Registering Ollama provider...");
+            builder.Services.AddOllamaProvider(builder.Configuration);
+            break;
+        // Removed duplicate case "gemini":
+        case "gemini":
+        default: // Default to Gemini if not specified or invalid
+            Log.Information("Registering Gemini provider...");
+            // Reverting to the original AddGemini registration method found earlier
+            builder.Services.AddGemini(options =>
+            {
+                builder.Configuration.GetSection("Gemini").Bind(options);
+            });
+            break;
+    }
 
     var app = builder.Build();
 

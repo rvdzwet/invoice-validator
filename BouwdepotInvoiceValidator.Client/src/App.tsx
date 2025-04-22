@@ -60,11 +60,7 @@ const App: React.FC = () => {
       <CssBaseline />
       <AppBar position="static" sx={{ bgcolor: '#ffffff', color: 'text.primary' }}> {/* Changed bgcolor to white and set text color */}
         <Toolbar>
-          <img
-            src="https://stater.nl/media/cache/webp/b3/logo_9Gmngs0.600x600.webp" 
-            alt="Stater Logo" 
-            style={{ height: '40px', marginRight: '16px' }} 
-          />
+          {/* Logo removed */}
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
             Withdrawal Validation Tool
           </Typography>
@@ -72,6 +68,9 @@ const App: React.FC = () => {
       </AppBar>
       <Container maxWidth="lg">
         <Box sx={{ my: 4 }}>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            Warning: Uploaded information will be sent to Google Gemini for analysis.
+          </Alert>
 
           {error && (
             <Alert severity="error" sx={{ mb: 2 }}>
