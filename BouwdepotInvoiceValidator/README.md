@@ -28,6 +28,7 @@ The application follows SOLID principles and is organized into several key compo
 - `GeminiService`: Implementation using Google Cloud AI Platform
 - `IInvoiceValidationService`: Orchestrates the validation workflow
 - `InvoiceValidationService`: Combines PDF extraction and AI validation
+- `PromptTemplateService`: Manages AI prompt templates for different validation tasks
 
 ### Components
 - `InvoiceUpload`: Main UI component for uploading invoices
@@ -56,6 +57,16 @@ dotnet run
 - iText7 for PDF processing
 - Google Cloud AIPlatform SDK for Gemini integration
 - Bootstrap for UI styling
+
+## Prompt Templates
+
+The application uses structured prompt templates for AI interactions:
+- Document type verification
+- Invoice header extraction
+- Invoice line items extraction
+- Invoice parties extraction
+
+These templates follow a consistent structure with role, task, instructions, and output format sections to ensure reliable AI responses.
 
 ## Note About PDF Processing
 
