@@ -10,6 +10,7 @@ obj/
 *.pdb
 publish/
 logs/
+BouwdepotInvoiceValidator/wwwroot/
 
 # Node.js / React
 node_modules/
@@ -33,3 +34,4 @@ yarn-error.log*
 # User-specific files
 *.csproj.user
 appsettings.Development.json
+publish-output/
