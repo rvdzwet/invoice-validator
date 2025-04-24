@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿using BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models;
+﻿using BouwdepotInvoiceValidator.Infrastructure.Google.Models;
 using BouwdepotValidationValidator.Infrastructure.Abstractions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -7,7 +7,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
+namespace BouwdepotInvoiceValidator.Infrastructure.Google
 {
     /// <summary>
     /// Client for interacting with the Gemini API

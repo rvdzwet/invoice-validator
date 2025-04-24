@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models
+namespace BouwdepotInvoiceValidator.Infrastructure.Google.Models
 {
     // Response Structures
     internal class GeminiResponse

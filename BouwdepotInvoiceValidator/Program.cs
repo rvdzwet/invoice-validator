@@ -3,6 +3,7 @@ using BouwdepotInvoiceValidator.Infrastructure.Providers.Google; // For Gemini s
 using BouwdepotInvoiceValidator.Infrastructure.Ollama; // Corrected namespace for Ollama services
 using Microsoft.OpenApi.Models;
 using Serilog;
+using BouwdepotInvoiceValidator.Infrastructure.Google;
 
 var builder = WebApplication.CreateBuilder(args); // Moved builder creation up
 

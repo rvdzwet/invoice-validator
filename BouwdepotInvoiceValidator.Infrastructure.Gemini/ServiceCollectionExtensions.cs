@@ -1,5 +1,4 @@
-﻿using BouwdepotInvoiceValidator.Infrastructure.Providers.Google;
-using BouwdepotValidationValidator.Infrastructure.Abstractions;
+﻿using BouwdepotValidationValidator.Infrastructure.Abstractions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -7,7 +6,7 @@ using Microsoft.Extensions.Options;
 using Polly;
 using Polly.Extensions.Http;
 
-namespace Microsoft.Extensions.DependencyInjection
+namespace BouwdepotInvoiceValidator.Infrastructure.Google
 {
     /// <summary>
     /// Extension methods for setting up Gemini client services in an <see cref="IServiceCollection"/>.

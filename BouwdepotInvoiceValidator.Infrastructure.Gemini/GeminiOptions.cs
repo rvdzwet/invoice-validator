@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google
+namespace BouwdepotInvoiceValidator.Infrastructure.Google
 {
     /// <summary>
     /// Options for configuring the Gemini client

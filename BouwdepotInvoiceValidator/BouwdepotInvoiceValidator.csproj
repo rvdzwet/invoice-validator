@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BouwdepotInvoiceValidator.Domain\BouwdepotInvoiceValidator.Domain.Services.csproj" />
-    <ProjectReference Include="..\BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Providers.Google.csproj" />
+    <ProjectReference Include="..\BouwdepotInvoiceValidator.Infrastructure.Gemini\BouwdepotInvoiceValidator.Infrastructure.Google.csproj" />
     <ProjectReference Include="..\BouwdepotInvoiceValidator.Infrastructure.Ollama\BouwdepotInvoiceValidator.Infrastructure.Ollama.csproj" />
   </ItemGroup>
 

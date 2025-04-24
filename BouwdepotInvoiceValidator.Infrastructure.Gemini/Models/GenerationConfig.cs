@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json.Serialization;
 
-namespace BouwdepotInvoiceValidator.Infrastructure.Providers.Google.Models
+namespace BouwdepotInvoiceValidator.Infrastructure.Google.Models
 {
     /// <summary>
     /// Configuration for text generation in Gemini API requests
